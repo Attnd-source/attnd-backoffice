@@ -9,8 +9,8 @@ export const brand = {
   tagline: "Corporate Events — Back Office",
   // Used by the PDF invoice letter (RGB 0-1). Mirrors --brand in globals.css.
   pdf: {
-    primary: { r: 0.333, g: 0.071, b: 0.878 }, // violet #5512E0
-    accent: { r: 0.945, g: 0.353, b: 0.133 }, // orange #F15A22
+    primary: { r: 0.333, g: 0.027, b: 0.812 }, // violet #5507cf
+    accent: { r: 0.937, g: 0.353, b: 0.161 }, // orange #ef5a29
     ink: { r: 0.13, g: 0.16, b: 0.22 },
   },
   currency: "SAR",

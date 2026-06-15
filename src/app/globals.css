@@ -5,10 +5,10 @@
 :root {
   /* ---- Attnd brand palette (from the official logo) ---- */
   /* Violet #5512E0 primary with an orange #F15A22 accent. */
-  --brand: 260 85% 47%;        /* primary brand violet (#5512E0) */
+  --brand: 263 93% 42%;        /* primary brand violet (#5507cf) */
   --brand-fg: 0 0% 100%;       /* text on brand */
-  --brand-muted: 258 100% 96%; /* tinted violet surfaces */
-  --brand-accent: 16 88% 54%;  /* orange accent (#F15A22) */
+  --brand-muted: 263 100% 96%; /* tinted violet surfaces */
+  --brand-accent: 15 86% 55%;  /* orange accent (#ef5a29) */
 
   --radius: 0.65rem;
 
@@ -20,7 +20,7 @@
   --muted-foreground: 215 16% 47%;
   --border: 214 20% 90%;
   --input: 214 20% 88%;
-  --ring: 260 85% 47%;
+  --ring: 263 93% 42%;
 
   --success: 142 71% 36%;
   --warning: 38 92% 50%;
