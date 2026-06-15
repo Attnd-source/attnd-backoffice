@@ -12,7 +12,7 @@ import {
   CartesianGrid,
 } from "recharts";
 
-const COLORS = ["#0a5b67", "#1789a3", "#f59e0b", "#22c55e", "#ef4444", "#6366f1"];
+const COLORS = ["#5512E0", "#7C3AED", "#F15A22", "#22c55e", "#ef4444", "#0ea5e9"];
 
 export function StatusBar({ data }: { data: { name: string; value: number }[] }) {
   return (
@@ -22,7 +22,7 @@ export function StatusBar({ data }: { data: { name: string; value: number }[] })
         <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} interval={0} angle={-12} textAnchor="end" height={48} />
         <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#64748b" }} />
         <Tooltip cursor={{ fill: "rgba(10,91,103,0.06)" }} />
-        <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="#0a5b67" />
+        <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="#5512E0" />
       </BarChart>
     </ResponsiveContainer>
   );

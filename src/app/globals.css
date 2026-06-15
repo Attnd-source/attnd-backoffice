@@ -3,12 +3,12 @@
 @tailwind utilities;
 
 :root {
-  /* ---- Brand palette (placeholder; swap these once Attnd assets arrive) ---- */
-  /* Deep corporate teal/ink with a warm gold accent — clean, professional. */
-  --brand: 187 78% 24%;        /* primary brand color */
+  /* ---- Attnd brand palette (from the official logo) ---- */
+  /* Violet #5512E0 primary with an orange #F15A22 accent. */
+  --brand: 260 85% 47%;        /* primary brand violet (#5512E0) */
   --brand-fg: 0 0% 100%;       /* text on brand */
-  --brand-muted: 187 40% 92%;  /* tinted surfaces */
-  --brand-accent: 38 92% 50%;  /* gold accent */
+  --brand-muted: 258 100% 96%; /* tinted violet surfaces */
+  --brand-accent: 16 88% 54%;  /* orange accent (#F15A22) */
 
   --radius: 0.65rem;
 
@@ -20,7 +20,7 @@
   --muted-foreground: 215 16% 47%;
   --border: 214 20% 90%;
   --input: 214 20% 88%;
-  --ring: 187 78% 24%;
+  --ring: 260 85% 47%;
 
   --success: 142 71% 36%;
   --warning: 38 92% 50%;

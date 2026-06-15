@@ -1,7 +1,9 @@
-<svg width="160" height="40" viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="2" y="6" width="28" height="28" rx="8" fill="hsl(187,78%,24%)"/>
-  <path d="M9 26L16 13L23 26" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="16" cy="22" r="2.2" fill="hsl(38,92%,50%)"/>
-  <text x="40" y="26" font-family="Segoe UI, Inter, sans-serif" font-size="19" font-weight="700" fill="hsl(215,28%,17%)">Attnd</text>
-  <text x="103" y="26" font-family="Segoe UI, Inter, sans-serif" font-size="19" font-weight="400" fill="hsl(187,78%,24%)">·BO</text>
+<svg width="150" height="50" viewBox="0 0 150 50" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Attnd">
+  <!-- Attnd wordmark recreated in brand colors. For a pixel-perfect mark,
+       drop the official PNG at public/logo.png and point brand.logoPath to it. -->
+  <text x="2" y="40" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="46" letter-spacing="-2" fill="#5512E0">Attnd</text>
+  <!-- orange crossbar through the tt -->
+  <rect x="36" y="17" width="34" height="8" rx="2.5" fill="#F15A22" />
+  <!-- violet dot -->
+  <circle cx="63" cy="9.5" r="4.6" fill="#5512E0" />
 </svg>
