@@ -1,0 +1,37 @@
+# Render blueprint — provisions the web app + a free Postgres database together.
+# In Render: New → Blueprint → connect this repo → it reads this file.
+services:
+  - type: web
+    name: attnd-backoffice
+    runtime: node
+    plan: free
+    # Install (incl. dev tools needed to build), generate the Postgres schema,
+    # create tables, seed the admin + categories, then build the app.
+    buildCommand: >-
+      npm install --include=dev &&
+      node scripts/prepare-pg-schema.mjs &&
+      npx prisma generate --schema prisma/schema.prod.prisma &&
+      npx prisma db push --schema prisma/schema.prod.prisma --accept-data-loss &&
+      npx tsx prisma/seed.ts &&
+      npx next build
+    startCommand: npx next start -p $PORT
+    healthCheckPath: /login
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: attnd-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true # Render creates a strong random session secret
+      - key: NODE_VERSION
+        value: "20.18.0"
+      - key: ADMIN_EMAIL
+        sync: false # you set this in the dashboard (your admin login email)
+      - key: ADMIN_PASSWORD
+        sync: false # you set this in the dashboard (a strong first password)
+
+databases:
+  - name: attnd-db
+    plan: free
+    databaseName: attnd
+    user: attnd

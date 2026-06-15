@@ -32,40 +32,45 @@ const VENDOR_CATEGORIES = [
 ];
 
 async function main() {
-  const adminEmail = "admin@attnd.sa";
-  const passwordHash = await bcrypt.hash("Admin@123", 10);
+  // Admin credentials come from env in production (so there's no known default).
+  const adminEmail = (process.env.ADMIN_EMAIL || "admin@attnd.sa").toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD || "Admin@123";
 
-  const admin = await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {},
-    create: {
-      name: "Attnd Admin",
-      email: adminEmail,
-      mobile: "+966500000000",
-      passwordHash,
-      role: "ADMIN",
-      active: true,
-    },
-  });
-  console.log(`Admin user ready: ${admin.email} / Admin@123`);
+  // Only create the default admin if NO admin exists yet (deploy-safe: never
+  // overwrites an existing admin's password on redeploys).
+  const adminCount = await prisma.user.count({ where: { role: "ADMIN" } });
+  if (adminCount === 0) {
+    const passwordHash = await bcrypt.hash(adminPassword, 10);
+    await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: {},
+      create: {
+        name: "Attnd Admin",
+        email: adminEmail,
+        mobile: "+966500000000",
+        passwordHash,
+        role: "ADMIN",
+        active: true,
+      },
+    });
+    console.log(`Created admin user: ${adminEmail}`);
+  } else {
+    console.log("Admin already exists — skipping admin seed.");
+  }
 
-  for (const name of VENUE_CATEGORIES) {
-    await prisma.category.upsert({
-      where: { type_name: { type: "VENUE", name } },
-      update: {},
-      create: { type: "VENUE", name },
-    });
+  // Only seed categories if none exist (deploy-safe: won't resurrect deletions).
+  const categoryCount = await prisma.category.count();
+  if (categoryCount === 0) {
+    for (const name of VENUE_CATEGORIES) {
+      await prisma.category.create({ data: { type: "VENUE", name } });
+    }
+    for (const name of VENDOR_CATEGORIES) {
+      await prisma.category.create({ data: { type: "VENDOR", name } });
+    }
+    console.log(`Seeded ${VENUE_CATEGORIES.length} venue + ${VENDOR_CATEGORIES.length} vendor categories.`);
+  } else {
+    console.log("Categories already exist — skipping category seed.");
   }
-  for (const name of VENDOR_CATEGORIES) {
-    await prisma.category.upsert({
-      where: { type_name: { type: "VENDOR", name } },
-      update: {},
-      create: { type: "VENDOR", name },
-    });
-  }
-  console.log(
-    `Seeded ${VENUE_CATEGORIES.length} venue + ${VENDOR_CATEGORIES.length} vendor categories.`
-  );
 }
 
 main()

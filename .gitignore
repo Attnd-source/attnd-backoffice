@@ -17,6 +17,7 @@
 !/uploads/.gitkeep
 
 # env
+.env
 .env*.local
 
 # machine-specific dev helper (ARM64 x64-node workaround)
@@ -28,3 +29,6 @@
 npm-debug.log*
 next-env.d.ts
 /coverage
+
+# generated at deploy time
+/prisma/schema.prod.prisma

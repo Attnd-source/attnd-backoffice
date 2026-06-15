@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { recordAudit } from "@/lib/audit";
-import { saveUpload } from "@/lib/storage";
 import { str, strOrNull } from "@/lib/form";
 import { netRevenue } from "@/lib/finance";
 import { PAYMENT_STATUSES, PAYMENT_STATUSES_2 } from "@/lib/constants";
@@ -56,13 +55,15 @@ export async function createInvoice(fd: FormData): Promise<void> {
   const eventId = str(fd, "eventId");
   if (!serviceProviderId || !eventId) return; // required fields enforced in the form
 
-  let attachmentPath: string | null = null;
   let attachmentName: string | null = null;
+  let attachmentType: string | null = null;
+  let attachmentData: Buffer | null = null;
   const file = fd.get("attachment");
   if (file instanceof File && file.size > 0) {
-    const saved = await saveUpload(file);
-    attachmentPath = saved.storedName;
-    attachmentName = saved.originalName;
+    if (file.size > 10 * 1024 * 1024) return; // 10 MB cap
+    attachmentName = file.name;
+    attachmentType = file.type || "application/octet-stream";
+    attachmentData = Buffer.from(await file.arrayBuffer());
   }
 
   const suppliers = buildSuppliers(fd);
@@ -71,8 +72,9 @@ export async function createInvoice(fd: FormData): Promise<void> {
     data: {
       serviceProviderId,
       eventId,
-      attachmentPath,
       attachmentName,
+      attachmentType,
+      attachmentData,
       note: strOrNull(fd, "note"),
       createdById: session.id,
       suppliers: { create: suppliers },

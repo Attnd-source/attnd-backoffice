@@ -1,59 +1,107 @@
-# Deploying Attnd Backoffice
+# Deploying Attnd Backoffice (free, no credit card)
 
-The app is built as a single deployable Next.js application. Local development uses SQLite;
-production should use **PostgreSQL**. Below is the recommended path (Vercel + a hosted
-Postgres), plus what to change.
+This guide puts the system online at a public address so your staff can log in from
+anywhere. It uses **Render** (free web hosting) with a **free Postgres database** — no
+credit card required. The only trade-off on the free plan: after ~15 minutes of no use,
+the first visit takes about a minute to "wake up". You can upgrade to always-on later for
+about **$7/month** (needs a card) — one click, no code changes.
 
-## 1. Switch the database to Postgres
-In `prisma/schema.prisma`, change the datasource provider:
+You'll do three things: (1) put the code on GitHub, (2) deploy it on Render, (3) point your
+`attnd.sa` subdomain at it. Total time ≈ 20–30 minutes. **Tell Claude when you hit any step
+you'd like done for you** — the technical parts (step 1, and verifying the deploy) can be
+done for you if you share the repo URL.
 
-```prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-```
+---
 
-Create a free Postgres database (e.g. **Neon** at neon.tech or **Supabase**) and copy its
-connection string.
+## Step 1 — Put the code on GitHub (free, no card)
 
-## 2. Environment variables
-Set these in your host (Vercel → Project → Settings → Environment Variables):
+1. Create a free account at **https://github.com/signup** (just email + password).
+2. Click the **+** (top-right) → **New repository**.
+   - Name: `attnd-backoffice`
+   - Visibility: **Private** (recommended — keeps your code internal)
+   - Do **not** add a README/.gitignore (the project already has them).
+   - Click **Create repository**.
+3. GitHub shows a page with commands. Copy the repository URL (looks like
+   `https://github.com/yourname/attnd-backoffice.git`).
+4. Send that URL to Claude and say "push the code" — it will upload the project for you.
+   (Or do it yourself in the project folder:
+   `git remote add origin <URL>` then `git push -u origin master`.)
 
-| Variable        | Value                                                            |
-|-----------------|------------------------------------------------------------------|
-| `DATABASE_URL`  | your Postgres connection string                                  |
-| `AUTH_SECRET`   | a long random string (e.g. `openssl rand -base64 48`)            |
-| `UPLOAD_DIR`    | not needed once you move uploads to cloud storage (see step 5)   |
+---
 
-## 3. Create tables + seed
-From your machine (pointing DATABASE_URL at Postgres), or via a one-off job:
+## Step 2 — Deploy on Render (free, no card)
 
-```bash
-npx prisma migrate deploy   # or: npx prisma db push
-npm run db:seed             # creates admin@attnd.sa / Admin@123  (change immediately)
-```
+1. Go to **https://render.com** → **Get Started** → sign up with your GitHub account
+   (or email). No credit card is requested for the free plan.
+2. In the Render dashboard click **New +** → **Blueprint**.
+3. Choose **Connect a repository** and pick `attnd-backoffice`. Render reads the included
+   `render.yaml` and shows it will create:
+   - a **Web Service** (the app), and
+   - a **Postgres database** (free).
+4. Before applying, Render asks you to fill two values (these become your first admin
+   login — keep them safe):
+   - `ADMIN_EMAIL` → e.g. `you@attnd.sa`
+   - `ADMIN_PASSWORD` → a strong password (used to log in the first time)
+5. Click **Apply** / **Create**. Render builds the app and database (3–6 minutes the first
+   time). When done, the web service shows a green **Live** status and a URL like
+   `https://attnd-backoffice.onrender.com`.
+6. Open that URL and log in with the email + password from step 4. ✅
 
-## 4. Deploy
-```bash
-npm i -g vercel
-vercel            # follow prompts, link the project
-vercel --prod
-```
-Vercel runs `npm run build` (which runs `prisma generate` first). The app boots on Node —
-no ARM64/x64 concerns on the server (Vercel is x64 Linux).
+> Everything else (the session secret, the database connection) is configured automatically
+> by `render.yaml`. You don't touch any other settings.
 
-## 5. File uploads (service-provider invoice attachments)
-Local dev writes uploads to `/uploads`. Serverless hosts have an ephemeral filesystem, so
-for production swap the storage layer in `src/lib/storage.ts` to an S3-compatible bucket
-(AWS S3, Cloudflare R2, Supabase Storage). Only `saveUpload()` and the `/api/files/[id]`
-route read/write files — update those two and store the object key in `attachmentPath`.
+---
 
-## 6. Branding
-Replace `public/logo.svg` and the values in `src/lib/brand.ts` (and the `--brand*` colors in
-`src/app/globals.css`) with the official Attnd assets.
+## Step 3 — Use your own domain (optional but recommended)
+
+To serve it at e.g. **`backoffice.attnd.sa`**:
+
+1. In Render → your web service → **Settings** → **Custom Domains** → **Add Custom Domain**.
+2. Enter `backoffice.attnd.sa`. Render shows a **CNAME** target (like
+   `attnd-backoffice.onrender.com`).
+3. Log in to wherever `attnd.sa` DNS is managed (registrar / Cloudflare) and add a **CNAME**:
+   - **Name/Host:** `backoffice`
+   - **Value/Target:** the Render target from step 2
+4. Back in Render, click **Verify**. Within a few minutes Render issues a free HTTPS
+   certificate and the domain goes live. Staff use `https://backoffice.attnd.sa`.
+
+---
+
+## First things to do after it's live
+
+1. **Log in** with your admin email/password.
+2. **Admin → Users** — create accounts for your staff (each gets their own email + password).
+3. **Admin → Categories** — replace the placeholder venue/vendor lists with your real ones.
+4. Start using Contracts / Organizers / Events / Finance.
+
+## Upgrading to always-on (optional, ~$7/mo)
+
+To remove the cold-start delay: Render → web service → **Settings** → change the instance
+type from **Free** to **Starter** (requires adding a card to Render). No code changes.
+
+---
+
+## How it differs from the local version (reference)
+
+| | Local (this PC) | Render (online) |
+|---|---|---|
+| Database | SQLite file (`dev.db`) | Managed Postgres |
+| Invoice attachments | stored in the database | stored in the database |
+| Address | `localhost:3000` (this PC only) | public HTTPS URL |
+| Session secret | dev value in `.env` | auto-generated by Render |
+
+The code is identical; only the database provider switches, handled automatically by the
+build via `scripts/prepare-pg-schema.mjs` (it writes `prisma/schema.prod.prisma` with
+`provider = postgresql`). Your local setup keeps working unchanged.
+
+## Notes & safety
+- The `.env` file (local secrets) is **not** uploaded to GitHub — production secrets live only
+  in Render.
+- Login has basic brute-force throttling; sessions are HTTPS-only cookies in production.
+- Free Postgres on Render is fine to start; upgrade the database plan as your data grows.
 
 ## Other hosts
-Any Node host works (Render, Railway, Fly.io, a VPS). Build with `npm run build`, start with
-`npm run start`, and provide the same environment variables. For a VPS you can keep using the
-local filesystem for uploads and even SQLite, but Postgres is recommended for concurrent use.
+Any Node host works (Railway, Fly.io, a VPS). Build with the same commands shown in
+`render.yaml`, start with `npm run start`, and provide `DATABASE_URL` (Postgres) and
+`AUTH_SECRET`. On a VPS with a persistent disk you could keep SQLite, but Postgres is
+recommended for concurrent staff use.

@@ -144,8 +144,9 @@ model Invoice {
   id                String   @id @default(cuid())
   serviceProviderId String
   eventId           String
-  attachmentPath    String?
   attachmentName    String?
+  attachmentType    String?
+  attachmentData    Bytes? // stored in DB so it works on any host (no disk needed)
   note              String?
 
   createdById String

@@ -50,7 +50,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
               </Link>
             </ReadField>
             <ReadField label="Attachment">
-              {invoice.attachmentPath ? (
+              {invoice.attachmentName ? (
                 <a
                   href={`/api/files/${invoice.id}`}
                   target="_blank"
