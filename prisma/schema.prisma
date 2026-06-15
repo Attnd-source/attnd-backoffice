@@ -1,0 +1,213 @@
+// Attnd Backoffice — data model.
+// Local dev uses SQLite. To deploy on Postgres, change `provider` to
+// "postgresql" and point DATABASE_URL at your database (see DEPLOY.md).
+// NOTE: SQLite has no native enums, so enum-like fields are stored as String
+// and validated in app code via src/lib/constants.ts + Zod.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  mobile       String?
+  passwordHash String
+  role         String   @default("STAFF") // ADMIN | STAFF
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // records this user issued
+  contracts          Contract[]         @relation("ContractIssuer")
+  organizers         Organizer[]        @relation("OrganizerIssuer")
+  events             Event[]            @relation("EventIssuer")
+  invoices           Invoice[]          @relation("InvoiceCreator")
+  generatedInvoices  GeneratedInvoice[] @relation("GeneratedInvoiceCreator")
+  auditLogs          AuditLog[]
+}
+
+// Editable venue/vendor subcategories, managed from the Admin page.
+model Category {
+  id        String   @id @default(cuid())
+  type      String // VENUE | VENDOR
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  contracts     Contract[]
+  eventServices EventService[]
+
+  @@unique([type, name])
+}
+
+// The "partner" registry. Each contract represents a venue or vendor partner.
+model Contract {
+  id                  String    @id @default(cuid())
+  type                String // VENUE | VENDOR
+  subcategoryId       String?
+  partnerName         String
+  pointOfContact      String?
+  communicationType   String? // PHONE | EMAIL | VISIT | WHATSAPP
+  communicationAddr   String?
+  dateOfIssue         DateTime?
+  status              String    @default("CONTACTED") // CONTACTED | PENDING | CONTRACT_SENT | SIGNED | REJECTED
+  contractIssuingDate DateTime?
+  contractPeriod      Int? // months
+  contractRenewal     DateTime?
+  commissionPct       Float     @default(0) // percentage, e.g. 15 = 15%
+  downPayment         String?
+  note                String?
+
+  issuerId  String
+  issuer    User     @relation("ContractIssuer", fields: [issuerId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subcategory       Category?          @relation(fields: [subcategoryId], references: [id])
+  eventsAsProvider  Event[]            @relation("EventProvider")
+  invoices          Invoice[]          @relation("InvoiceProvider")
+  invoiceSuppliers  InvoiceSupplier[]
+  generatedInvoices GeneratedInvoice[] @relation("GeneratedInvoiceProvider")
+
+  @@index([partnerName])
+  @@index([status])
+}
+
+model Organizer {
+  id                 String   @id @default(cuid())
+  name               String
+  communicationChannel String? // REFERRAL | LINKEDIN | MARKETING_LEAD | VISIT | NETWORK | PLATFORM | EMAILS | INSTAGRAM | WEBSEARCH | LUSHA | OTHER_EVENTS
+  communicationInfo  String?
+  date               DateTime @default(now())
+  note               String?
+
+  issuerId  String
+  issuer    User     @relation("OrganizerIssuer", fields: [issuerId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events Event[]
+
+  @@index([name])
+}
+
+model Event {
+  id                String    @id @default(cuid())
+  organizerId       String
+  communicationInfo String?
+  eventName         String
+  typeOfEvent       String?
+  numberOfAttendees Int?
+  expectedBudget    Float?
+  status            String    @default("NEW") // NEW | PENDING | SIGNED | REJECTED
+  city              String?
+  eventDate         DateTime?
+  serviceProviderId String?
+  externalPartner   String?
+  partnerBankInfo   String?
+  note              String?
+
+  issuerId  String
+  issuer    User     @relation("EventIssuer", fields: [issuerId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizer       Organizer          @relation(fields: [organizerId], references: [id])
+  serviceProvider Contract?          @relation("EventProvider", fields: [serviceProviderId], references: [id])
+  servicesNeeded  EventService[]
+  invoices        Invoice[]
+  generatedInvoices GeneratedInvoice[]
+
+  @@index([eventName])
+}
+
+// Many-to-many: an event can need several venue/vendor service categories.
+model EventService {
+  id         String   @id @default(cuid())
+  eventId    String
+  categoryId String
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([eventId, categoryId])
+}
+
+// Service-provider invoice (tracking record) with supplier line items.
+model Invoice {
+  id                String   @id @default(cuid())
+  serviceProviderId String
+  eventId           String
+  attachmentPath    String?
+  attachmentName    String?
+  note              String?
+
+  createdById String
+  createdBy   User     @relation("InvoiceCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  serviceProvider Contract          @relation("InvoiceProvider", fields: [serviceProviderId], references: [id])
+  event           Event             @relation(fields: [eventId], references: [id])
+  suppliers       InvoiceSupplier[]
+}
+
+model InvoiceSupplier {
+  id            String  @id @default(cuid())
+  invoiceId     String
+  supplierId    String
+  commissionPct Float   @default(0) // snapshot from partner at time of entry
+  downPayment   String?
+  actualCost    Float   @default(0)
+  offerCost     Float   @default(0)
+  netRevenue    Float   @default(0) // computed: offer - actual + actual*commission%
+  partnerBankInfo String?
+  firstPaymentStatus  String @default("PENDING") // PENDING | PAID | REJECTED
+  secondPaymentStatus String @default("NA") // PENDING | PAID | REJECTED | NA
+
+  invoice  Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  supplier Contract @relation(fields: [supplierId], references: [id])
+}
+
+// Generated invoice = the downloadable PDF letter to a partner.
+model GeneratedInvoice {
+  id                String   @id @default(cuid())
+  number            Int      @unique // sequential, assigned in app code at creation
+  serviceProviderId String
+  eventId           String
+  eventDate         DateTime?
+  actualCost        Float    @default(0)
+  attndCommission   Float    @default(0) // actualCost * commission%
+  vat               Float    @default(0) // attndCommission * 0.15
+  invoicedAmount    Float    @default(0) // actualCost - attndCommission - vat
+  printedAt         DateTime @default(now())
+
+  createdById String
+  createdBy   User     @relation("GeneratedInvoiceCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  serviceProvider Contract @relation("GeneratedInvoiceProvider", fields: [serviceProviderId], references: [id])
+  event           Event    @relation(fields: [eventId], references: [id])
+}
+
+// Edit-tracking: who changed what, when. One row per create/update/delete.
+model AuditLog {
+  id         String   @id @default(cuid())
+  entityType String // Contract | Organizer | Event | Invoice | GeneratedInvoice | User | Category
+  entityId   String
+  entityLabel String? // human-friendly label (e.g. partner/event name) for display
+  action     String // CREATE | UPDATE | DELETE
+  changes    String? // JSON: { field: { old, new } }
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

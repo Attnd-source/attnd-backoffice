@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "attnd",
+      "runtimeExecutable": "C:\\Users\\laila\\node-x64\\npm.cmd",
+      "runtimeArgs": ["run", "start"],
+      "port": 3000
+    }
+  ]
+}

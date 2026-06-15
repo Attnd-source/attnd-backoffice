@@ -1,0 +1,30 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# database (local sqlite)
+/prisma/*.db
+/prisma/*.db-journal
+
+# uploaded files
+/uploads/*
+!/uploads/.gitkeep
+
+# env
+.env*.local
+
+# machine-specific dev helper (ARM64 x64-node workaround)
+/run-server.cmd
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+next-env.d.ts
+/coverage
