@@ -21,8 +21,10 @@ export async function embedBrandFonts(
   doc: PDFDocument
 ): Promise<{ font: PDFFont; bold: PDFFont }> {
   doc.registerFontkit(fontkit);
-  const font = await doc.embedFont(fontBytes("Amiri-Regular.ttf"), { subset: true });
-  const bold = await doc.embedFont(fontBytes("Amiri-Bold.ttf"), { subset: true });
+  // NOTE: subset:false — embed the full font. Subsetting this font in pdf-lib
+  // drops glyphs and produces broken text, so we embed it whole.
+  const font = await doc.embedFont(fontBytes("Amiri-Regular.ttf"), { subset: false });
+  const bold = await doc.embedFont(fontBytes("Amiri-Bold.ttf"), { subset: false });
   return { font, bold };
 }
 
