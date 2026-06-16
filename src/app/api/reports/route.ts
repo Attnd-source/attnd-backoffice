@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, rgb } from "pdf-lib";
 import { getSession } from "@/lib/session";
 import { buildReport, DATASETS, type DatasetKey } from "@/lib/reports";
 import { brand } from "@/lib/brand";
+import { embedBrandFonts, shape } from "@/lib/pdf";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -53,8 +54,7 @@ export async function GET(req: NextRequest) {
 
   if (format === "pdf") {
     const pdf = await PDFDocument.create();
-    const font = await pdf.embedFont(StandardFonts.Helvetica);
-    const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+    const { font, bold } = await embedBrandFonts(pdf);
     const primary = rgb(brand.pdf.primary.r, brand.pdf.primary.g, brand.pdf.primary.b);
     const ink = rgb(brand.pdf.ink.r, brand.pdf.ink.g, brand.pdf.ink.b);
 
@@ -69,11 +69,11 @@ export async function GET(req: NextRequest) {
     let page = pdf.addPage([pageW, pageH]);
     function header(p: any) {
       p.drawRectangle({ x: 0, y: pageH - 50, width: pageW, height: 50, color: primary });
-      p.drawText(`${brand.name} — ${report.title} report`, { x: margin, y: pageH - 32, size: 14, font: bold, color: rgb(1, 1, 1) });
+      p.drawText(shape(`${brand.name} — ${report.title} report`), { x: margin, y: pageH - 32, size: 14, font: bold, color: rgb(1, 1, 1) });
       p.drawText(new Date().toLocaleDateString("en-GB"), { x: pageW - 110, y: pageH - 32, size: 10, font, color: rgb(1, 1, 1) });
       let yy = pageH - 70;
       report.columns.forEach((c, i) => {
-        p.drawText(truncate(c, colW, bold, size), { x: margin + i * colW + 2, y: yy, size, font: bold, color: primary });
+        p.drawText(shape(truncate(c, colW, bold, size)), { x: margin + i * colW + 2, y: yy, size, font: bold, color: primary });
       });
       return yy - rowH;
     }
@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
         y = header(page);
       }
       row.forEach((cell, i) => {
-        page.drawText(truncate(String(cell), colW, font, size), {
+        page.drawText(shape(truncate(String(cell), colW, font, size)), {
           x: margin + i * colW + 2,
           y,
           size,
@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
 
 function truncate(text: string, maxW: number, font: any, size: number): string {
   let t = text;
-  while (t.length > 1 && font.widthOfTextAtSize(t, size) > maxW - 4) {
+  while (t.length > 1 && font.widthOfTextAtSize(shape(t), size) > maxW - 4) {
     t = t.slice(0, -2);
   }
   return t === text ? t : t + "…";

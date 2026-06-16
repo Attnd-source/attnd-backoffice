@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   experimental: {
     // pdf-lib / exceljs / bcryptjs are server-only; keep them out of the client bundle.
-    serverComponentsExternalPackages: ["pdf-lib", "exceljs", "bcryptjs"],
+    serverComponentsExternalPackages: ["pdf-lib", "@pdf-lib/fontkit", "exceljs", "bcryptjs"],
   },
 };
 

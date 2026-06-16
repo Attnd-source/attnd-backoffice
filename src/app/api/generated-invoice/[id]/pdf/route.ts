@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, rgb } from "pdf-lib";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { brand } from "@/lib/brand";
+import { embedBrandFonts, shape } from "@/lib/pdf";
 
 function sar(n: number): string {
   return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + " SAR";
@@ -15,103 +16,103 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const session = await getSession();
   if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
-  const gi = await prisma.generatedInvoice.findUnique({
-    where: { id: params.id },
-    include: { serviceProvider: true, event: { select: { eventName: true } } },
-  });
-  if (!gi) return new NextResponse("Not found", { status: 404 });
+  try {
+    const gi = await prisma.generatedInvoice.findUnique({
+      where: { id: params.id },
+      include: { serviceProvider: true, event: { select: { eventName: true } } },
+    });
+    if (!gi) return new NextResponse("Not found", { status: 404 });
 
-  const pdf = await PDFDocument.create();
-  const page = pdf.addPage([595.28, 841.89]); // A4
-  const { width, height } = page.getSize();
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
-  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+    const pdf = await PDFDocument.create();
+    const { font, bold } = await embedBrandFonts(pdf);
+    const page = pdf.addPage([595.28, 841.89]); // A4
+    const { width, height } = page.getSize();
 
-  const P = brand.pdf.primary;
-  const A = brand.pdf.accent;
-  const INK = brand.pdf.ink;
-  const primary = rgb(P.r, P.g, P.b);
-  const accent = rgb(A.r, A.g, A.b);
-  const ink = rgb(INK.r, INK.g, INK.b);
-  const muted = rgb(0.42, 0.45, 0.5);
+    const P = brand.pdf.primary;
+    const A = brand.pdf.accent;
+    const INK = brand.pdf.ink;
+    const primary = rgb(P.r, P.g, P.b);
+    const accent = rgb(A.r, A.g, A.b);
+    const ink = rgb(INK.r, INK.g, INK.b);
+    const muted = rgb(0.42, 0.45, 0.5);
+    const white = rgb(1, 1, 1);
 
-  // ---- Header band ----
-  page.drawRectangle({ x: 0, y: height - 90, width, height: 90, color: primary });
-  // Logo mark (swap for embedded PNG once the official asset arrives)
-  page.drawRectangle({ x: 40, y: height - 68, width: 30, height: 30, color: rgb(1, 1, 1) });
-  page.drawText("A", { x: 49, y: height - 62, size: 20, font: bold, color: primary });
-  page.drawText(brand.name, { x: 82, y: height - 55, size: 22, font: bold, color: rgb(1, 1, 1) });
-  page.drawText(brand.tagline, { x: 82, y: height - 72, size: 9, font, color: rgb(0.85, 0.92, 0.93) });
-  page.drawText("INVOICE", { x: width - 140, y: height - 55, size: 22, font: bold, color: accent });
+    const draw = (text: string, x: number, y: number, size: number, f = font, color = ink) =>
+      page.drawText(shape(text), { x, y, size, font: f, color });
+    const drawRight = (text: string, right: number, y: number, size: number, f = font, color = ink) => {
+      const s = shape(text);
+      page.drawText(s, { x: right - f.widthOfTextAtSize(s, size), y, size, font: f, color });
+    };
 
-  // ---- Meta ----
-  let y = height - 130;
-  const printed = gi.printedAt ?? new Date();
-  page.drawText(`Invoice No:  INV-${gi.number}`, { x: 40, y, size: 11, font: bold, color: ink });
-  page.drawText(`Date:  ${fmtDate(printed)}`, { x: width - 200, y, size: 11, font, color: ink });
-  y -= 18;
-  if (gi.eventDate) {
-    page.drawText(`Event date:  ${fmtDate(gi.eventDate)}`, { x: width - 200, y, size: 11, font, color: ink });
-  }
+    // ---- Header band ----
+    page.drawRectangle({ x: 0, y: height - 90, width, height: 90, color: primary });
+    page.drawRectangle({ x: 40, y: height - 68, width: 30, height: 30, color: white });
+    draw("A", 49, height - 62, 20, bold, primary);
+    draw(brand.name, 82, height - 58, 22, bold, white);
+    draw(brand.tagline, 82, height - 74, 9, font, rgb(0.85, 0.88, 0.95));
+    drawRight("INVOICE", width - 40, height - 58, 22, bold, accent);
 
-  // ---- Addressed to ----
-  y -= 30;
-  page.drawText("To:", { x: 40, y, size: 11, font: bold, color: muted });
-  y -= 16;
-  page.drawText(gi.serviceProvider.partnerName, { x: 40, y, size: 14, font: bold, color: ink });
+    // ---- Meta ----
+    let y = height - 130;
+    const printed = gi.printedAt ?? new Date();
+    draw(`Invoice No:  INV-${gi.number}`, 40, y, 11, bold);
+    draw(`Date:  ${fmtDate(printed)}`, width - 200, y, 11);
+    y -= 18;
+    if (gi.eventDate) draw(`Event date:  ${fmtDate(gi.eventDate)}`, width - 200, y, 11);
 
-  // ---- Brief ----
-  y -= 40;
-  const brief = `Dear partner ${gi.serviceProvider.partnerName},`;
-  page.drawText(brief, { x: 40, y, size: 11, font, color: ink });
-  y -= 22;
+    // ---- Addressed to ----
+    y -= 30;
+    draw("To:", 40, y, 11, bold, muted);
+    y -= 16;
+    draw(gi.serviceProvider.partnerName, 40, y, 14, bold);
 
-  const body =
-    `Thank you for your cooperation to successfully delivering the request for the event ` +
-    `of "${gi.event.eventName}". We are waiting for your invoice of a total of ${sar(gi.invoicedAmount)}.`;
-  y = drawWrapped(page, body, 40, y, width - 80, 11, font, ink, 16);
+    // ---- Brief ----
+    y -= 40;
+    draw(`Dear partner ${gi.serviceProvider.partnerName},`, 40, y, 11);
+    y -= 22;
+    const body =
+      `Thank you for your cooperation to successfully delivering the request for the event ` +
+      `of "${gi.event.eventName}". We are waiting for your invoice of a total of ${sar(gi.invoicedAmount)}.`;
+    y = drawWrapped(page, body, 40, y, width - 80, 11, font, ink, 16);
 
-  // ---- Amounts table ----
-  y -= 20;
-  const rows: [string, string][] = [
-    ["Actual cost", sar(gi.actualCost)],
-    [`Attnd commission`, sar(gi.attndCommission)],
-    [`VAT (${brand.vatRate * 100}%)`, sar(gi.vat)],
-  ];
-  page.drawRectangle({ x: 40, y: y - 4, width: width - 80, height: 22, color: rgb(0.95, 0.97, 0.97) });
-  page.drawText("Summary", { x: 48, y: y + 3, size: 10, font: bold, color: primary });
-  y -= 26;
-  for (const [k, v] of rows) {
-    page.drawText(k, { x: 48, y, size: 11, font, color: ink });
-    page.drawText(v, { x: width - 48 - font.widthOfTextAtSize(v, 11), y, size: 11, font, color: ink });
+    // ---- Amounts ----
     y -= 20;
+    const rows: [string, string][] = [
+      ["Actual cost", sar(gi.actualCost)],
+      ["Attnd commission", sar(gi.attndCommission)],
+      [`VAT (${brand.vatRate * 100}%)`, sar(gi.vat)],
+    ];
+    page.drawRectangle({ x: 40, y: y - 4, width: width - 80, height: 22, color: rgb(0.95, 0.95, 0.99) });
+    draw("Summary", 48, y + 3, 10, bold, primary);
+    y -= 26;
+    for (const [k, v] of rows) {
+      draw(k, 48, y, 11);
+      drawRight(v, width - 48, y, 11);
+      y -= 20;
+    }
+    page.drawLine({ start: { x: 40, y: y + 6 }, end: { x: width - 40, y: y + 6 }, thickness: 1, color: primary });
+    y -= 6;
+    draw("Invoiced amount", 48, y, 12, bold, primary);
+    drawRight(sar(gi.invoicedAmount), width - 48, y, 12, bold, primary);
+
+    // ---- Footer ----
+    page.drawRectangle({ x: 0, y: 0, width, height: 40, color: rgb(0.96, 0.97, 0.98) });
+    draw(`${brand.productName} · Generated ${fmtDate(printed)}`, 40, 16, 9, font, muted);
+
+    const bytes = await pdf.save();
+    return new NextResponse(Buffer.from(bytes), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="Attnd-Invoice-INV-${gi.number}.pdf"`,
+      },
+    });
+  } catch (err) {
+    console.error("PDF generation failed:", err);
+    return new NextResponse("Could not generate the PDF. Please try again.", { status: 500 });
   }
-  // total line
-  page.drawLine({ start: { x: 40, y: y + 6 }, end: { x: width - 40, y: y + 6 }, thickness: 1, color: primary });
-  y -= 6;
-  page.drawText("Invoiced amount", { x: 48, y, size: 12, font: bold, color: primary });
-  const tot = sar(gi.invoicedAmount);
-  page.drawText(tot, { x: width - 48 - bold.widthOfTextAtSize(tot, 12), y, size: 12, font: bold, color: primary });
-
-  // ---- Footer ----
-  page.drawRectangle({ x: 0, y: 0, width, height: 40, color: rgb(0.96, 0.97, 0.98) });
-  page.drawText(`${brand.productName} · Generated ${fmtDate(printed)}`, {
-    x: 40,
-    y: 16,
-    size: 9,
-    font,
-    color: muted,
-  });
-
-  const bytes = await pdf.save();
-  return new NextResponse(Buffer.from(bytes), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="Attnd-Invoice-INV-${gi.number}.pdf"`,
-    },
-  });
 }
 
+// Draws wrapped text, shaping each line so Arabic renders correctly per line.
 function drawWrapped(
   page: any,
   text: string,
@@ -126,19 +127,21 @@ function drawWrapped(
   const words = text.split(" ");
   let line = "";
   let curY = y;
+  const flush = () => {
+    if (line) {
+      page.drawText(shape(line), { x, y: curY, size, font, color });
+      curY -= lineHeight;
+    }
+  };
   for (const w of words) {
     const test = line ? `${line} ${w}` : w;
-    if (font.widthOfTextAtSize(test, size) > maxWidth) {
-      page.drawText(line, { x, y: curY, size, font, color });
-      curY -= lineHeight;
+    if (font.widthOfTextAtSize(shape(test), size) > maxWidth) {
+      flush();
       line = w;
     } else {
       line = test;
     }
   }
-  if (line) {
-    page.drawText(line, { x, y: curY, size, font, color });
-    curY -= lineHeight;
-  }
+  flush();
   return curY;
 }
