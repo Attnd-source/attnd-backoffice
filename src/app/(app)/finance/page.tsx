@@ -73,12 +73,12 @@ export default async function FinancePage() {
     <div className="space-y-8">
       <PageHeader
         title="Finance"
-        subtitle="Service-provider invoices and generated partner invoices."
+        subtitle="Requests for invoice and generated partner invoices."
         action={
           <div className="flex gap-2">
             <Link href="/finance/invoices/new">
               <Button variant="outline">
-                <FilePlus2 className="h-4 w-4" /> New invoice
+                <FilePlus2 className="h-4 w-4" /> New request for invoice
               </Button>
             </Link>
             <Link href="/finance/generate">
@@ -92,7 +92,7 @@ export default async function FinancePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Service-provider invoices</CardTitle>
+          <CardTitle>Requests for invoice</CardTitle>
         </CardHeader>
         <CardBody>
           <DataTable

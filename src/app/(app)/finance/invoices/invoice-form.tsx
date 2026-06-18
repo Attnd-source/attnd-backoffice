@@ -102,7 +102,7 @@ export function InvoiceForm({ partners, events }: { partners: PartnerFin[]; even
                       ))}
                     </Select>
                   </Field>
-                  <Field label="Supplier invoice (attachment)" htmlFor={`f-${row.key}`}>
+                  <Field label="Request for invoice (attachment)" htmlFor={`f-${row.key}`}>
                     <Input id={`f-${row.key}`} name="attachment" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp"
                       className="file:mr-3 file:rounded file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm" />
                   </Field>
@@ -165,7 +165,7 @@ export function InvoiceForm({ partners, events }: { partners: PartnerFin[]; even
       </Field>
 
       <div className="flex gap-3">
-        <SubmitButton>Create invoice</SubmitButton>
+        <SubmitButton>Create request for invoice</SubmitButton>
         <Link href="/finance"><Button type="button" variant="outline">Cancel</Button></Link>
       </div>
     </form>

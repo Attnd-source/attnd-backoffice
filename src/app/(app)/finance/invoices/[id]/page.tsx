@@ -36,10 +36,10 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-6 lg:col-span-2">
         <PageHeader
-          title={`Invoice · ${invoice.serviceProvider.partnerName}`}
+          title={`Request for invoice · ${invoice.serviceProvider.partnerName}`}
           subtitle={`Recorded by ${invoice.createdBy.name}`}
-          breadcrumb={[{ label: "Finance", href: "/finance" }, { label: "Invoice" }]}
-          action={user.role === "ADMIN" ? <DeleteButton action={deleteInvoice} id={invoice.id} label="invoice" /> : undefined}
+          breadcrumb={[{ label: "Finance", href: "/finance" }, { label: "Request for invoice" }]}
+          action={user.role === "ADMIN" ? <DeleteButton action={deleteInvoice} id={invoice.id} label="request for invoice" /> : undefined}
         />
         <Card>
           <CardHeader>

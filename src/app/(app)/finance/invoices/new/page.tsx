@@ -14,9 +14,9 @@ export default async function NewInvoicePage() {
   return (
     <div className="max-w-5xl">
       <PageHeader
-        title="New service-provider invoice"
-        subtitle="Record a supplier invoice with one or more supplier lines. Net revenue is calculated automatically."
-        breadcrumb={[{ label: "Finance", href: "/finance" }, { label: "New invoice" }]}
+        title="New request for invoice"
+        subtitle="Record a request for invoice with one or more supplier lines. Amounts are calculated automatically."
+        breadcrumb={[{ label: "Finance", href: "/finance" }, { label: "New request for invoice" }]}
       />
       <Card>
         <CardBody>

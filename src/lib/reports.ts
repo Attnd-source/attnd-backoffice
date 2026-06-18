@@ -13,7 +13,7 @@ export const DATASETS = [
   { key: "contracts", label: "Contracts" },
   { key: "organizers", label: "Organizers" },
   { key: "events", label: "Events" },
-  { key: "invoices", label: "Service-provider invoices" },
+  { key: "invoices", label: "Requests for invoice" },
   { key: "generated", label: "Generated invoices" },
 ] as const;
 
@@ -123,7 +123,7 @@ export async function buildReport(
       });
       const filtered = rows.filter((i) => withinRange(i.createdAt, from, to));
       return {
-        title: "Service-provider invoices",
+        title: "Requests for invoice",
         columns: ["Service provider", "Event", "Suppliers", "Total net revenue", "Created by", "Created"],
         rows: filtered.map((i) => [
           i.serviceProvider.partnerName,
