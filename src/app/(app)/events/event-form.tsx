@@ -22,11 +22,9 @@ type EventData = {
   status: string;
   city: string | null;
   eventDate: Date | null;
-  serviceProviderId: string | null;
-  externalPartner: string | null;
-  partnerBankInfo: string | null;
   note: string | null;
   serviceIds: string[];
+  partnerIds: string[];
 };
 
 export function EventForm({
@@ -46,7 +44,8 @@ export function EventForm({
 }) {
   const action = event ? updateEvent : createEvent;
   const [state, formAction] = useFormState(action, {} as { error?: string });
-  const selected = new Set(event?.serviceIds ?? []);
+  const selectedServices = new Set(event?.serviceIds ?? []);
+  const selectedPartners = new Set(event?.partnerIds ?? []);
 
   return (
     <form action={formAction} className="space-y-6">
@@ -54,17 +53,10 @@ export function EventForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Organizer" htmlFor="organizerId" required>
-          <Select
-            id="organizerId"
-            name="organizerId"
-            defaultValue={event?.organizerId ?? defaultOrganizerId ?? ""}
-            required
-          >
+          <Select id="organizerId" name="organizerId" defaultValue={event?.organizerId ?? defaultOrganizerId ?? ""} required>
             <option value="">— Select organizer —</option>
             {organizers.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
+              <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </Select>
         </Field>
@@ -86,9 +78,7 @@ export function EventForm({
         <Field label="Status" htmlFor="status" required>
           <Select id="status" name="status" defaultValue={event?.status ?? "NEW"}>
             {EVENT_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {EVENT_STATUS_LABELS[s]}
-              </option>
+              <option key={s} value={s}>{EVENT_STATUS_LABELS[s]}</option>
             ))}
           </Select>
         </Field>
@@ -98,28 +88,24 @@ export function EventForm({
         <Field label="Event date" htmlFor="eventDate">
           <Input id="eventDate" name="eventDate" type="date" defaultValue={dateInput(event?.eventDate)} />
         </Field>
-        <Field label="Service provider (partner)" htmlFor="serviceProviderId">
-          <Select id="serviceProviderId" name="serviceProviderId" defaultValue={event?.serviceProviderId ?? ""}>
-            <option value="">— Select partner —</option>
-            {partners.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="External partner" htmlFor="externalPartner">
-          <Input id="externalPartner" name="externalPartner" defaultValue={event?.externalPartner ?? ""} />
-        </Field>
-        <Field label="Partner bank info" htmlFor="partnerBankInfo">
-          <Input id="partnerBankInfo" name="partnerBankInfo" defaultValue={event?.partnerBankInfo ?? ""} placeholder="IBAN / account" />
-        </Field>
       </div>
+
+      <Field label="Service providers (partners)" htmlFor="partners" hint="Select one or more. Each partner's bank info (IBAN) comes from its contract.">
+        <div className="max-h-56 space-y-1.5 overflow-y-auto rounded-md border border-border p-4 scroll-thin">
+          {partners.length === 0 && <p className="text-sm text-muted-foreground">No partners yet — add them in Contracts.</p>}
+          {partners.map((p) => (
+            <label key={p.value} className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="partners" value={p.value} defaultChecked={selectedPartners.has(p.value)} className="h-4 w-4" />
+              {p.label}
+            </label>
+          ))}
+        </div>
+      </Field>
 
       <Field label="Type of services needed" htmlFor="servicesNeeded" hint="Venue & vendor subcategories required for this event.">
         <div className="grid gap-4 rounded-md border border-border p-4 sm:grid-cols-2">
-          <ServiceGroup title="Venues" options={venueCategories} selected={selected} />
-          <ServiceGroup title="Vendors" options={vendorCategories} selected={selected} />
+          <ServiceGroup title="Venues" options={venueCategories} selected={selectedServices} />
+          <ServiceGroup title="Vendors" options={vendorCategories} selected={selectedServices} />
         </div>
       </Field>
 
@@ -137,24 +123,14 @@ export function EventForm({
       <div className="flex gap-3">
         <SubmitButton>{event ? "Save changes" : "Create event"}</SubmitButton>
         <Link href={event ? `/events/${event.id}` : "/events"}>
-          <Button type="button" variant="outline">
-            Cancel
-          </Button>
+          <Button type="button" variant="outline">Cancel</Button>
         </Link>
       </div>
     </form>
   );
 }
 
-function ServiceGroup({
-  title,
-  options,
-  selected,
-}: {
-  title: string;
-  options: Option[];
-  selected: Set<string>;
-}) {
+function ServiceGroup({ title, options, selected }: { title: string; options: Option[]; selected: Set<string> }) {
   return (
     <div>
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
@@ -162,13 +138,7 @@ function ServiceGroup({
         {options.length === 0 && <p className="text-sm text-muted-foreground">None defined.</p>}
         {options.map((o) => (
           <label key={o.value} className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="servicesNeeded"
-              value={o.value}
-              defaultChecked={selected.has(o.value)}
-              className="h-4 w-4"
-            />
+            <input type="checkbox" name="servicesNeeded" value={o.value} defaultChecked={selected.has(o.value)} className="h-4 w-4" />
             {o.label}
           </label>
         ))}

@@ -25,19 +25,23 @@ function parse(fd: FormData) {
     status,
     city: strOrNull(fd, "city"),
     eventDate: dateOrNull(fd, "eventDate"),
-    serviceProviderId: strOrNull(fd, "serviceProviderId"),
-    externalPartner: strOrNull(fd, "externalPartner"),
-    partnerBankInfo: strOrNull(fd, "partnerBankInfo"),
     note: strOrNull(fd, "note"),
   };
   const servicesNeeded = fd.getAll("servicesNeeded").map(String).filter(Boolean);
-  return { data, servicesNeeded };
+  const partners = fd.getAll("partners").map(String).filter(Boolean);
+  return { data, servicesNeeded, partners };
 }
 
-async function labelForServices(ids: string[]): Promise<string> {
+async function labelFor(model: "category" | "contract", ids: string[]): Promise<string> {
   if (ids.length === 0) return "—";
-  const cats = await prisma.category.findMany({ where: { id: { in: ids } } });
-  return cats.map((c) => c.name).sort().join(", ");
+  const rows =
+    model === "category"
+      ? await prisma.category.findMany({ where: { id: { in: ids } } })
+      : await prisma.contract.findMany({ where: { id: { in: ids } } });
+  return rows
+    .map((r: any) => (model === "category" ? r.name : r.partnerName))
+    .sort()
+    .join(", ");
 }
 
 export async function createEvent(_prev: unknown, fd: FormData) {
@@ -51,6 +55,7 @@ export async function createEvent(_prev: unknown, fd: FormData) {
       ...parsed.data,
       issuerId: session.id,
       servicesNeeded: { create: parsed.servicesNeeded.map((categoryId) => ({ categoryId })) },
+      partners: { create: parsed.partners.map((partnerId) => ({ partnerId })) },
     },
   });
   await recordAudit({
@@ -70,7 +75,7 @@ export async function updateEvent(_prev: unknown, fd: FormData) {
   const id = str(fd, "id");
   const before = await prisma.event.findUnique({
     where: { id },
-    include: { servicesNeeded: true },
+    include: { servicesNeeded: true, partners: true },
   });
   if (!before) return { error: "Event not found." };
   const parsed = parse(fd);
@@ -78,23 +83,26 @@ export async function updateEvent(_prev: unknown, fd: FormData) {
 
   const changes = diff(before as any, parsed.data as any, Object.keys(parsed.data));
 
-  // services-needed diff (by label)
-  const beforeIds = before.servicesNeeded.map((s) => s.categoryId).sort();
-  const afterIds = [...parsed.servicesNeeded].sort();
-  if (JSON.stringify(beforeIds) !== JSON.stringify(afterIds)) {
-    changes.servicesNeeded = {
-      old: await labelForServices(beforeIds),
-      new: await labelForServices(afterIds),
-    };
+  const beforeSvc = before.servicesNeeded.map((s) => s.categoryId).sort();
+  const afterSvc = [...parsed.servicesNeeded].sort();
+  if (JSON.stringify(beforeSvc) !== JSON.stringify(afterSvc)) {
+    changes.servicesNeeded = { old: await labelFor("category", beforeSvc), new: await labelFor("category", afterSvc) };
+  }
+  const beforePartners = before.partners.map((p) => p.partnerId).sort();
+  const afterPartners = [...parsed.partners].sort();
+  if (JSON.stringify(beforePartners) !== JSON.stringify(afterPartners)) {
+    changes.partners = { old: await labelFor("contract", beforePartners), new: await labelFor("contract", afterPartners) };
   }
 
   await prisma.$transaction([
     prisma.eventService.deleteMany({ where: { eventId: id } }),
+    prisma.eventPartner.deleteMany({ where: { eventId: id } }),
     prisma.event.update({
       where: { id },
       data: {
         ...parsed.data,
         servicesNeeded: { create: parsed.servicesNeeded.map((categoryId) => ({ categoryId })) },
+        partners: { create: parsed.partners.map((partnerId) => ({ partnerId })) },
       },
     }),
   ]);
@@ -110,4 +118,21 @@ export async function updateEvent(_prev: unknown, fd: FormData) {
   revalidatePath("/events");
   revalidatePath(`/events/${id}`);
   redirect(`/events/${id}`);
+}
+
+export async function deleteEvent(_prev: unknown, fd: FormData) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Only admins can delete." };
+  const id = str(fd, "id");
+  const event = await prisma.event.findUnique({
+    where: { id },
+    include: { _count: { select: { invoices: true, generatedInvoices: true } } },
+  });
+  if (!event) return { error: "Not found." };
+  if (event._count.invoices > 0 || event._count.generatedInvoices > 0)
+    return { error: "Delete the related invoices first." };
+  await recordAudit({ entityType: "Event", entityId: id, entityLabel: event.eventName, action: "DELETE", userId: session.id });
+  await prisma.event.delete({ where: { id } });
+  revalidatePath("/events");
+  redirect("/events");
 }

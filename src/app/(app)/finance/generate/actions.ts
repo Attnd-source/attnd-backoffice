@@ -50,3 +50,21 @@ export async function createGeneratedInvoice(_prev: unknown, fd: FormData) {
   revalidatePath("/finance");
   redirect(`/finance/generate/${gi.id}`);
 }
+
+export async function deleteGeneratedInvoice(_prev: unknown, fd: FormData) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Only admins can delete." };
+  const id = str(fd, "id");
+  const gi = await prisma.generatedInvoice.findUnique({ where: { id }, include: { serviceProvider: true } });
+  if (!gi) return { error: "Not found." };
+  await recordAudit({
+    entityType: "GeneratedInvoice",
+    entityId: id,
+    entityLabel: `INV-${gi.number} · ${gi.serviceProvider.partnerName}`,
+    action: "DELETE",
+    userId: session.id,
+  });
+  await prisma.generatedInvoice.delete({ where: { id } });
+  revalidatePath("/finance");
+  redirect("/finance");
+}

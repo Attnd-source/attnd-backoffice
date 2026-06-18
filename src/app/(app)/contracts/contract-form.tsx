@@ -33,7 +33,10 @@ type ContractData = {
   contractPeriod: number | null;
   contractRenewal: Date | null;
   commissionPct: number;
-  downPayment: string | null;
+  downPaymentPct: number;
+  crNumber: string | null;
+  vatNumber: string | null;
+  iban: string | null;
   note: string | null;
 };
 
@@ -146,8 +149,25 @@ export function ContractForm({
             defaultValue={contract?.commissionPct ?? 0}
           />
         </Field>
-        <Field label="Down payment" htmlFor="downPayment">
-          <Input id="downPayment" name="downPayment" defaultValue={contract?.downPayment ?? ""} placeholder="e.g. 50% upfront" />
+        <Field label="Down payment %" htmlFor="downPaymentPct" hint="Splits the supplier payment into 1st / 2nd in finance.">
+          <Input
+            id="downPaymentPct"
+            name="downPaymentPct"
+            type="number"
+            step="0.01"
+            min="0"
+            max="100"
+            defaultValue={contract?.downPaymentPct ?? 0}
+          />
+        </Field>
+        <Field label="CR / Freelance number" htmlFor="crNumber">
+          <Input id="crNumber" name="crNumber" inputMode="numeric" defaultValue={contract?.crNumber ?? ""} />
+        </Field>
+        <Field label="VAT number" htmlFor="vatNumber">
+          <Input id="vatNumber" name="vatNumber" inputMode="numeric" defaultValue={contract?.vatNumber ?? ""} />
+        </Field>
+        <Field label="IBAN" htmlFor="iban" hint="Used as the partner's bank info in events & finance.">
+          <Input id="iban" name="iban" defaultValue={contract?.iban ?? ""} placeholder="SA…" />
         </Field>
       </div>
 

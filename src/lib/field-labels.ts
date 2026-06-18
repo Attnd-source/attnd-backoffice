@@ -15,7 +15,10 @@ export const FIELD_LABELS: Record<string, string> = {
   contractPeriod: "Contract period (months)",
   contractRenewal: "Contract renewal",
   commissionPct: "Commission %",
-  downPayment: "Down payment",
+  downPaymentPct: "Down payment %",
+  crNumber: "CR / Freelance number",
+  vatNumber: "VAT number",
+  iban: "IBAN",
   // organizer
   name: "Name",
   communicationChannel: "Communication channel",

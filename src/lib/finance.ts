@@ -20,6 +20,23 @@ export function invoicedAmount(actualCost: number, commission: number, vat: numb
   return round2(actualCost - commission - vat);
 }
 
+/** Per-supplier invoiced amount on a service-provider invoice. */
+export function supplierInvoiced(actualCost: number, commissionPct: number): number {
+  const commission = attndCommission(actualCost, commissionPct);
+  const vat = vatOn(commission);
+  return invoicedAmount(actualCost, commission, vat);
+}
+
+/** First installment = invoiced amount × down-payment%. */
+export function firstPayment(invoiced: number, downPaymentPct: number): number {
+  return round2(invoiced * (downPaymentPct / 100));
+}
+
+/** Second installment = invoiced amount × (100% − down-payment%). */
+export function secondPayment(invoiced: number, downPaymentPct: number): number {
+  return round2(invoiced * ((100 - downPaymentPct) / 100));
+}
+
 export function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }

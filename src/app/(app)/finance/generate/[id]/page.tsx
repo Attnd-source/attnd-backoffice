@@ -8,12 +8,14 @@ import { ReadField } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { money, date } from "@/lib/format";
 import { brand } from "@/lib/brand";
+import { DeleteButton } from "@/components/delete-button";
+import { deleteGeneratedInvoice } from "../actions";
 import { Download } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function GeneratedInvoiceDetail({ params }: { params: { id: string } }) {
-  await requireUser();
+  const user = await requireUser();
   const gi = await prisma.generatedInvoice.findUnique({
     where: { id: params.id },
     include: {
@@ -31,11 +33,14 @@ export default async function GeneratedInvoiceDetail({ params }: { params: { id:
         subtitle={`${gi.serviceProvider.partnerName} · created by ${gi.createdBy.name}`}
         breadcrumb={[{ label: "Finance", href: "/finance" }, { label: `INV-${gi.number}` }]}
         action={
-          <a href={`/api/generated-invoice/${gi.id}/pdf`} target="_blank">
-            <Button>
-              <Download className="h-4 w-4" /> Download PDF
-            </Button>
-          </a>
+          <div className="flex items-center gap-2">
+            <a href={`/api/generated-invoice/${gi.id}/pdf`} target="_blank">
+              <Button>
+                <Download className="h-4 w-4" /> Download PDF
+              </Button>
+            </a>
+            {user.role === "ADMIN" && <DeleteButton action={deleteGeneratedInvoice} id={gi.id} label="invoice" />}
+          </div>
         }
       />
       <Card>

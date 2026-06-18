@@ -33,7 +33,10 @@ function parse(fd: FormData) {
       contractPeriod: intOrNull(fd, "contractPeriod"),
       contractRenewal: dateOrNull(fd, "contractRenewal"),
       commissionPct: floatOr(fd, "commissionPct"),
-      downPayment: strOrNull(fd, "downPayment"),
+      downPaymentPct: floatOr(fd, "downPaymentPct"),
+      crNumber: strOrNull(fd, "crNumber"),
+      vatNumber: strOrNull(fd, "vatNumber"),
+      iban: strOrNull(fd, "iban"),
       note: strOrNull(fd, "note"),
     },
   };
@@ -81,4 +84,24 @@ export async function updateContract(_prev: unknown, fd: FormData) {
   revalidatePath("/contracts");
   revalidatePath(`/contracts/${id}`);
   redirect(`/contracts/${id}`);
+}
+
+export async function deleteContract(_prev: unknown, fd: FormData) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Only admins can delete." };
+  const id = str(fd, "id");
+  const contract = await prisma.contract.findUnique({
+    where: { id },
+    include: {
+      _count: { select: { eventLinks: true, invoices: true, invoiceSuppliers: true, generatedInvoices: true } },
+    },
+  });
+  if (!contract) return { error: "Not found." };
+  const refs =
+    contract._count.eventLinks + contract._count.invoices + contract._count.invoiceSuppliers + contract._count.generatedInvoices;
+  if (refs > 0) return { error: "This partner is used in events or invoices. Remove those first." };
+  await recordAudit({ entityType: "Contract", entityId: id, entityLabel: contract.partnerName, action: "DELETE", userId: session.id });
+  await prisma.contract.delete({ where: { id } });
+  revalidatePath("/contracts");
+  redirect("/contracts");
 }

@@ -5,7 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { recordAudit } from "@/lib/audit";
 import { str, strOrNull } from "@/lib/form";
-import { netRevenue } from "@/lib/finance";
+import {
+  netRevenue,
+  attndCommission,
+  vatOn,
+  supplierInvoiced,
+  firstPayment,
+  secondPayment,
+} from "@/lib/finance";
 import { PAYMENT_STATUSES, PAYMENT_STATUSES_2 } from "@/lib/constants";
 
 function num(v: FormDataEntryValue | null): number {
@@ -13,36 +20,57 @@ function num(v: FormDataEntryValue | null): number {
   return isNaN(n) ? 0 : n;
 }
 
-function buildSuppliers(fd: FormData) {
+const MAX_FILE = 10 * 1024 * 1024;
+
+async function buildSuppliers(fd: FormData) {
   const supplierIds = fd.getAll("supplierId").map(String);
-  const commissions = fd.getAll("commissionPct").map((v) => num(v));
-  const downPayments = fd.getAll("downPayment").map(String);
-  const actualCosts = fd.getAll("actualCost").map((v) => num(v));
-  const offerCosts = fd.getAll("offerCost").map((v) => num(v));
+  const commissions = fd.getAll("commissionPct").map(num);
+  const downPays = fd.getAll("downPaymentPct").map(num);
+  const actualCosts = fd.getAll("actualCost").map(num);
+  const offerCosts = fd.getAll("offerCost").map(num);
   const bankInfos = fd.getAll("partnerBankInfo").map(String);
   const firstStatuses = fd.getAll("firstPaymentStatus").map(String);
   const secondStatuses = fd.getAll("secondPaymentStatus").map(String);
+  const files = fd.getAll("attachment");
 
   const rows = [];
   for (let i = 0; i < supplierIds.length; i++) {
-    if (!supplierIds[i]) continue; // skip empty rows
+    if (!supplierIds[i]) continue;
     const commissionPct = commissions[i] ?? 0;
+    const downPaymentPct = downPays[i] ?? 0;
     const actualCost = actualCosts[i] ?? 0;
     const offerCost = offerCosts[i] ?? 0;
+    const invoiced = supplierInvoiced(actualCost, commissionPct);
+    const commission = attndCommission(actualCost, commissionPct);
+
+    let attachmentName: string | null = null;
+    let attachmentType: string | null = null;
+    let attachmentData: Buffer | null = null;
+    const file = files[i];
+    if (file instanceof File && file.size > 0 && file.size <= MAX_FILE) {
+      attachmentName = file.name;
+      attachmentType = file.type || "application/octet-stream";
+      attachmentData = Buffer.from(await file.arrayBuffer());
+    }
+
     rows.push({
       supplierId: supplierIds[i],
       commissionPct,
-      downPayment: downPayments[i] || null,
+      downPaymentPct,
       actualCost,
       offerCost,
       netRevenue: netRevenue(offerCost, actualCost, commissionPct),
+      attndCommission: commission,
+      vat: vatOn(commission),
+      invoicedAmount: invoiced,
+      firstPaymentAmount: firstPayment(invoiced, downPaymentPct),
+      secondPaymentAmount: secondPayment(invoiced, downPaymentPct),
       partnerBankInfo: bankInfos[i] || null,
-      firstPaymentStatus: PAYMENT_STATUSES.includes(firstStatuses[i] as any)
-        ? firstStatuses[i]
-        : "PENDING",
-      secondPaymentStatus: PAYMENT_STATUSES_2.includes(secondStatuses[i] as any)
-        ? secondStatuses[i]
-        : "NA",
+      firstPaymentStatus: PAYMENT_STATUSES.includes(firstStatuses[i] as any) ? firstStatuses[i] : "PENDING",
+      secondPaymentStatus: PAYMENT_STATUSES_2.includes(secondStatuses[i] as any) ? secondStatuses[i] : "NA",
+      attachmentName,
+      attachmentType,
+      attachmentData,
     });
   }
   return rows;
@@ -53,28 +81,14 @@ export async function createInvoice(fd: FormData): Promise<void> {
   if (!session) return;
   const serviceProviderId = str(fd, "serviceProviderId");
   const eventId = str(fd, "eventId");
-  if (!serviceProviderId || !eventId) return; // required fields enforced in the form
+  if (!serviceProviderId || !eventId) return;
 
-  let attachmentName: string | null = null;
-  let attachmentType: string | null = null;
-  let attachmentData: Buffer | null = null;
-  const file = fd.get("attachment");
-  if (file instanceof File && file.size > 0) {
-    if (file.size > 10 * 1024 * 1024) return; // 10 MB cap
-    attachmentName = file.name;
-    attachmentType = file.type || "application/octet-stream";
-    attachmentData = Buffer.from(await file.arrayBuffer());
-  }
-
-  const suppliers = buildSuppliers(fd);
+  const suppliers = await buildSuppliers(fd);
 
   const invoice = await prisma.invoice.create({
     data: {
       serviceProviderId,
       eventId,
-      attachmentName,
-      attachmentType,
-      attachmentData,
       note: strOrNull(fd, "note"),
       createdById: session.id,
       suppliers: { create: suppliers },
@@ -107,9 +121,7 @@ export async function updateInvoiceStatuses(fd: FormData) {
     where: { id: supplierRowId },
     data: {
       firstPaymentStatus: PAYMENT_STATUSES.includes(first as any) ? first : before.firstPaymentStatus,
-      secondPaymentStatus: PAYMENT_STATUSES_2.includes(second as any)
-        ? second
-        : before.secondPaymentStatus,
+      secondPaymentStatus: PAYMENT_STATUSES_2.includes(second as any) ? second : before.secondPaymentStatus,
     },
   });
   await recordAudit({
@@ -123,4 +135,22 @@ export async function updateInvoiceStatuses(fd: FormData) {
     userId: session.id,
   });
   revalidatePath(`/finance/invoices/${id}`);
+}
+
+export async function deleteInvoice(_prev: unknown, fd: FormData) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Only admins can delete." };
+  const id = str(fd, "id");
+  const invoice = await prisma.invoice.findUnique({ where: { id }, include: { serviceProvider: true } });
+  if (!invoice) return { error: "Not found." };
+  await recordAudit({
+    entityType: "Invoice",
+    entityId: id,
+    entityLabel: invoice.serviceProvider.partnerName,
+    action: "DELETE",
+    userId: session.id,
+  });
+  await prisma.invoice.delete({ where: { id } });
+  revalidatePath("/finance");
+  redirect("/finance");
 }

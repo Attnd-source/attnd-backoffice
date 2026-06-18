@@ -5,15 +5,14 @@ export type PartnerFin = {
   value: string;
   label: string;
   commissionPct: number;
-  downPayment: string | null;
+  downPaymentPct: number;
+  iban: string | null;
 };
 
 export type EventFin = {
   value: string;
   label: string;
-  bankInfo: string | null;
   eventDate: string | null;
-  providerId: string | null;
 };
 
 export async function getPartnerFinanceOptions(): Promise<PartnerFin[]> {
@@ -22,7 +21,8 @@ export async function getPartnerFinanceOptions(): Promise<PartnerFin[]> {
     value: p.id,
     label: p.partnerName,
     commissionPct: p.commissionPct,
-    downPayment: p.downPayment,
+    downPaymentPct: p.downPaymentPct,
+    iban: p.iban,
   }));
 }
 
@@ -31,8 +31,6 @@ export async function getEventFinanceOptions(): Promise<EventFin[]> {
   return events.map((e) => ({
     value: e.id,
     label: e.eventName,
-    bankInfo: e.partnerBankInfo,
     eventDate: e.eventDate?.toISOString() ?? null,
-    providerId: e.serviceProviderId,
   }));
 }

@@ -6,14 +6,16 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { HistoryPanel } from "@/components/history-panel";
+import { DeleteButton } from "@/components/delete-button";
 import { getHistory } from "@/lib/audit";
 import { OrganizerForm } from "../organizer-form";
+import { deleteOrganizer } from "../actions";
 import { CalendarDays } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function OrganizerDetailPage({ params }: { params: { id: string } }) {
-  await requireUser();
+  const user = await requireUser();
   const organizer = await prisma.organizer.findUnique({
     where: { id: params.id },
     include: { issuer: { select: { name: true } }, _count: { select: { events: true } } },
@@ -29,11 +31,14 @@ export default async function OrganizerDetailPage({ params }: { params: { id: st
           subtitle={`Lead by ${organizer.issuer.name}`}
           breadcrumb={[{ label: "Organizers", href: "/organizers" }, { label: organizer.name }]}
           action={
-            <Link href={`/events/new?organizer=${organizer.id}`}>
-              <Button variant="outline">
-                <CalendarDays className="h-4 w-4" /> New event ({organizer._count.events})
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href={`/events/new?organizer=${organizer.id}`}>
+                <Button variant="outline">
+                  <CalendarDays className="h-4 w-4" /> New event ({organizer._count.events})
+                </Button>
+              </Link>
+              {user.role === "ADMIN" && <DeleteButton action={deleteOrganizer} id={organizer.id} label="organizer" />}
+            </div>
           }
         />
         <Card>

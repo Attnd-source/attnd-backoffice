@@ -24,12 +24,10 @@ export function GenerateForm({
 }) {
   const [state, formAction] = useFormState(createGeneratedInvoice, {} as { error?: string });
   const initialEvent = events.find((e) => e.value === defaultEventId);
-  const [providerId, setProviderId] = useState(initialEvent?.providerId ?? "");
+  const [providerId, setProviderId] = useState("");
   const [eventId, setEventId] = useState(defaultEventId ?? "");
   const [eventDate, setEventDate] = useState(initialEvent?.eventDate?.slice(0, 10) ?? "");
-  const [commissionPct, setCommissionPct] = useState(
-    partners.find((p) => p.value === initialEvent?.providerId)?.commissionPct ?? 0
-  );
+  const [commissionPct, setCommissionPct] = useState(0);
   const [actualCost, setActualCost] = useState("");
 
   const cost = parseFloat(actualCost) || 0;
@@ -45,7 +43,6 @@ export function GenerateForm({
     setEventId(id);
     const ev = events.find((e) => e.value === id);
     if (ev?.eventDate) setEventDate(ev.eventDate.slice(0, 10));
-    if (ev?.providerId) onProvider(ev.providerId);
   }
 
   return (

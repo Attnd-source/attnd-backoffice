@@ -3,7 +3,7 @@ import { PDFDocument, rgb } from "pdf-lib";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { brand } from "@/lib/brand";
-import { embedBrandFonts, shape } from "@/lib/pdf";
+import { embedBrandFonts, shape, drawLogo } from "@/lib/pdf";
 
 function sar(n: number): string {
   return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + " SAR";
@@ -35,7 +35,6 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     const accent = rgb(A.r, A.g, A.b);
     const ink = rgb(INK.r, INK.g, INK.b);
     const muted = rgb(0.42, 0.45, 0.5);
-    const white = rgb(1, 1, 1);
 
     const draw = (text: string, x: number, y: number, size: number, f = font, color = ink) =>
       page.drawText(shape(text), { x, y, size, font: f, color });
@@ -44,13 +43,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       page.drawText(s, { x: right - f.widthOfTextAtSize(s, size), y, size, font: f, color });
     };
 
-    // ---- Header band ----
-    page.drawRectangle({ x: 0, y: height - 90, width, height: 90, color: primary });
-    page.drawRectangle({ x: 40, y: height - 68, width: 30, height: 30, color: white });
-    draw("A", 49, height - 62, 20, bold, primary);
-    draw(brand.name, 82, height - 58, 22, bold, white);
-    draw(brand.tagline, 82, height - 74, 9, font, rgb(0.85, 0.88, 0.95));
-    drawRight("INVOICE", width - 40, height - 58, 22, bold, accent);
+    // ---- Header: white letterhead with the real Attnd logo ----
+    drawLogo(page, 40, height - 34, 34);
+    drawRight("INVOICE", width - 40, height - 60, 24, bold, primary);
+    draw(brand.tagline, width - 40 - font.widthOfTextAtSize(brand.tagline, 8), height - 74, 8, font, muted);
+    page.drawRectangle({ x: 40, y: height - 84, width: width - 80, height: 2, color: accent });
 
     // ---- Meta ----
     let y = height - 130;

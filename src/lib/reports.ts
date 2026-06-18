@@ -48,7 +48,7 @@ export async function buildReport(
       const filtered = rows.filter((c) => withinRange(c.contractIssuingDate ?? c.createdAt, from, to));
       return {
         title: "Contracts",
-        columns: ["Partner", "Type", "Subcategory", "Status", "Issuer", "Date of issue", "Issuing date", "Renewal", "Commission %", "Down payment"],
+        columns: ["Partner", "Type", "Subcategory", "Status", "Issuer", "Date of issue", "Issuing date", "Renewal", "Commission %", "Down payment %", "CR/Freelance", "VAT no.", "IBAN"],
         rows: filtered.map((c) => [
           c.partnerName,
           label(PARTNER_TYPE_LABELS, c.type),
@@ -59,7 +59,10 @@ export async function buildReport(
           fmtDate(c.contractIssuingDate),
           fmtDate(c.contractRenewal),
           c.commissionPct,
-          c.downPayment ?? "—",
+          c.downPaymentPct,
+          c.crNumber ?? "—",
+          c.vatNumber ?? "—",
+          c.iban ?? "—",
         ]),
       };
     }
@@ -86,14 +89,14 @@ export async function buildReport(
         include: {
           organizer: { select: { name: true } },
           issuer: { select: { name: true } },
-          serviceProvider: { select: { partnerName: true } },
+          partners: { include: { partner: { select: { partnerName: true } } } },
         },
         orderBy: { createdAt: "desc" },
       });
       const filtered = rows.filter((e) => withinRange(e.eventDate ?? e.createdAt, from, to));
       return {
         title: "Events",
-        columns: ["Event", "Organizer", "Type", "Status", "City", "Attendees", "Expected budget", "Event date", "Service provider", "Issuer"],
+        columns: ["Event", "Organizer", "Type", "Status", "City", "Attendees", "Expected budget", "Event date", "Service providers", "Issuer"],
         rows: filtered.map((e) => [
           e.eventName,
           e.organizer.name,
@@ -103,7 +106,7 @@ export async function buildReport(
           e.numberOfAttendees ?? 0,
           e.expectedBudget ?? 0,
           fmtDate(e.eventDate),
-          e.serviceProvider?.partnerName ?? "—",
+          e.partners.map((p) => p.partner.partnerName).join(", ") || "—",
           e.issuer.name,
         ]),
       };

@@ -34,7 +34,6 @@ export default async function DashboardPage() {
     organizersCount,
     eventsCount,
     invoicesCount,
-    generatedCount,
     contracts,
     events,
     generated,
@@ -44,7 +43,6 @@ export default async function DashboardPage() {
     prisma.organizer.count(),
     prisma.event.count(),
     prisma.invoice.count(),
-    prisma.generatedInvoice.count(),
     prisma.contract.groupBy({ by: ["status"], _count: true }),
     prisma.event.groupBy({ by: ["status"], _count: true }),
     prisma.generatedInvoice.aggregate({ _sum: { invoicedAmount: true } }),
@@ -68,7 +66,7 @@ export default async function DashboardPage() {
     { label: "Contracts", value: contractsCount, href: "/contracts", icon: FileText },
     { label: "Organizers", value: organizersCount, href: "/organizers", icon: Users2 },
     { label: "Events", value: eventsCount, href: "/events", icon: CalendarDays },
-    { label: "Invoices", value: invoicesCount + generatedCount, href: "/finance", icon: Receipt },
+    { label: "Invoices", value: invoicesCount, href: "/finance", icon: Receipt },
   ];
 
   return (

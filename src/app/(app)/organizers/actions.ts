@@ -65,3 +65,19 @@ export async function updateOrganizer(_prev: unknown, fd: FormData) {
   revalidatePath(`/organizers/${id}`);
   redirect(`/organizers/${id}`);
 }
+
+export async function deleteOrganizer(_prev: unknown, fd: FormData) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") return { error: "Only admins can delete." };
+  const id = str(fd, "id");
+  const organizer = await prisma.organizer.findUnique({
+    where: { id },
+    include: { _count: { select: { events: true } } },
+  });
+  if (!organizer) return { error: "Not found." };
+  if (organizer._count.events > 0) return { error: "Delete the related events first." };
+  await recordAudit({ entityType: "Organizer", entityId: id, entityLabel: organizer.name, action: "DELETE", userId: session.id });
+  await prisma.organizer.delete({ where: { id } });
+  revalidatePath("/organizers");
+  redirect("/organizers");
+}

@@ -7,16 +7,18 @@ import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReadField } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import { HistoryPanel } from "@/components/history-panel";
+import { DeleteButton } from "@/components/delete-button";
 import { getHistory } from "@/lib/audit";
 import { money } from "@/lib/format";
 import { label, PAYMENT_STATUS_LABELS } from "@/lib/constants";
 import { Paperclip } from "lucide-react";
 import { PaymentStatusForm } from "./payment-status-form";
+import { deleteInvoice } from "../actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function InvoiceDetailPage({ params }: { params: { id: string } }) {
-  await requireUser();
+  const user = await requireUser();
   const invoice = await prisma.invoice.findUnique({
     where: { id: params.id },
     include: {
@@ -37,6 +39,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
           title={`Invoice · ${invoice.serviceProvider.partnerName}`}
           subtitle={`Recorded by ${invoice.createdBy.name}`}
           breadcrumb={[{ label: "Finance", href: "/finance" }, { label: "Invoice" }]}
+          action={user.role === "ADMIN" ? <DeleteButton action={deleteInvoice} id={invoice.id} label="invoice" /> : undefined}
         />
         <Card>
           <CardHeader>
@@ -48,19 +51,6 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
               <Link href={`/events/${invoice.event.id}`} className="text-brand underline-offset-2 hover:underline">
                 {invoice.event.eventName}
               </Link>
-            </ReadField>
-            <ReadField label="Attachment">
-              {invoice.attachmentName ? (
-                <a
-                  href={`/api/files/${invoice.id}`}
-                  target="_blank"
-                  className="inline-flex items-center gap-1 text-brand underline-offset-2 hover:underline"
-                >
-                  <Paperclip className="h-3.5 w-3.5" /> {invoice.attachmentName}
-                </a>
-              ) : (
-                "—"
-              )}
             </ReadField>
             <ReadField label="Total net revenue">
               <span className="font-semibold text-brand">{money(totalNet)}</span>
@@ -76,27 +66,30 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
           <CardBody className="space-y-4">
             {invoice.suppliers.map((row) => (
               <div key={row.id} className="rounded-lg border border-border p-4">
-                <div className="mb-3 flex items-center justify-between">
+                <div className="mb-3 flex items-center justify-between gap-2">
                   <span className="font-medium">{row.supplier.partnerName}</span>
-                  <span className="font-semibold text-brand">{money(row.netRevenue)}</span>
+                  {row.attachmentName && (
+                    <a href={`/api/files/${row.id}`} target="_blank" className="inline-flex items-center gap-1 text-sm text-brand underline-offset-2 hover:underline">
+                      <Paperclip className="h-3.5 w-3.5" /> {row.attachmentName}
+                    </a>
+                  )}
                 </div>
                 <div className="grid gap-3 text-sm sm:grid-cols-3">
                   <ReadField label="Actual cost">{money(row.actualCost)}</ReadField>
                   <ReadField label="Offer cost">{money(row.offerCost)}</ReadField>
                   <ReadField label="Commission %">{row.commissionPct}%</ReadField>
-                  <ReadField label="Down payment">{row.downPayment ?? "—"}</ReadField>
+                  <ReadField label="Down payment %">{row.downPaymentPct}%</ReadField>
+                  <ReadField label="Net revenue"><span className="font-semibold text-brand">{money(row.netRevenue)}</span></ReadField>
+                  <ReadField label="Invoiced amount">{money(row.invoicedAmount)}</ReadField>
+                  <ReadField label="1st payment">{money(row.firstPaymentAmount)}</ReadField>
+                  <ReadField label="2nd payment">{money(row.secondPaymentAmount)}</ReadField>
                   <ReadField label="Bank info">{row.partnerBankInfo ?? "—"}</ReadField>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Badge intent="muted">1st: {label(PAYMENT_STATUS_LABELS, row.firstPaymentStatus)}</Badge>
                   <Badge intent="muted">2nd: {label(PAYMENT_STATUS_LABELS, row.secondPaymentStatus)}</Badge>
                 </div>
-                <PaymentStatusForm
-                  invoiceId={invoice.id}
-                  rowId={row.id}
-                  first={row.firstPaymentStatus}
-                  second={row.secondPaymentStatus}
-                />
+                <PaymentStatusForm invoiceId={invoice.id} rowId={row.id} first={row.firstPaymentStatus} second={row.secondPaymentStatus} />
               </div>
             ))}
           </CardBody>

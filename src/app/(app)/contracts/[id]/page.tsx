@@ -8,12 +8,14 @@ import { HistoryPanel } from "@/components/history-panel";
 import { getHistory } from "@/lib/audit";
 import { getCategoryOptions } from "@/lib/options";
 import { CONTRACT_STATUS_LABELS } from "@/lib/constants";
+import { DeleteButton } from "@/components/delete-button";
 import { ContractForm } from "../contract-form";
+import { deleteContract } from "../actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContractDetailPage({ params }: { params: { id: string } }) {
-  await requireUser();
+  const user = await requireUser();
   const contract = await prisma.contract.findUnique({
     where: { id: params.id },
     include: { issuer: { select: { name: true } } },
@@ -33,7 +35,12 @@ export default async function ContractDetailPage({ params }: { params: { id: str
           title={contract.partnerName}
           subtitle={`Issued by ${contract.issuer.name}`}
           breadcrumb={[{ label: "Contracts", href: "/contracts" }, { label: contract.partnerName }]}
-          action={<StatusBadge value={contract.status} label={CONTRACT_STATUS_LABELS[contract.status]} />}
+          action={
+            <div className="flex items-center gap-2">
+              <StatusBadge value={contract.status} label={CONTRACT_STATUS_LABELS[contract.status]} />
+              {user.role === "ADMIN" && <DeleteButton action={deleteContract} id={contract.id} label="contract" />}
+            </div>
+          }
         />
         <Card>
           <CardHeader>

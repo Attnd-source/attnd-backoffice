@@ -1,7 +1,7 @@
 import "server-only";
 import { readFileSync } from "fs";
 import path from "path";
-import type { PDFDocument, PDFFont } from "pdf-lib";
+import { rgb, type PDFDocument, type PDFFont, type PDFPage } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import reshaper from "arabic-reshaper";
 import bidiFactory from "bidi-js";
@@ -56,3 +56,33 @@ export function shape(text: string | null | undefined): string {
   }
   return chars.join("");
 }
+
+// Logo source viewBox is 628.61 x 158.49 (see public/logo.svg).
+const LOGO_VIEW_W = 628.61;
+const LOGO_VIEW_H = 158.49;
+let cachedLogoPaths: { color: ReturnType<typeof rgb>; d: string }[] | null = null;
+
+function logoPaths() {
+  if (cachedLogoPaths) return cachedLogoPaths;
+  const svg = readFileSync(path.join(process.cwd(), "public", "logo.svg"), "utf8");
+  const violet = rgb(0.333, 0.027, 0.812);
+  const orange = rgb(0.937, 0.353, 0.161);
+  const re = /<path[^>]*class="(cls-\d)"[^>]*d="([^"]+)"/g;
+  const out: { color: ReturnType<typeof rgb>; d: string }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(svg))) {
+    out.push({ color: m[1] === "cls-1" ? orange : violet, d: m[2] });
+  }
+  cachedLogoPaths = out;
+  return out;
+}
+
+/** Draw the real Attnd logo (vector) at (x, top-y) scaled to `height` points. */
+export function drawLogo(page: PDFPage, x: number, topY: number, height: number) {
+  const scale = height / LOGO_VIEW_H;
+  for (const p of logoPaths()) {
+    page.drawSvgPath(p.d, { x, y: topY, scale, color: p.color });
+  }
+}
+
+export const LOGO_RATIO = LOGO_VIEW_W / LOGO_VIEW_H;

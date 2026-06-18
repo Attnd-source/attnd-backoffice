@@ -24,13 +24,12 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // records this user issued
-  contracts          Contract[]         @relation("ContractIssuer")
-  organizers         Organizer[]        @relation("OrganizerIssuer")
-  events             Event[]            @relation("EventIssuer")
-  invoices           Invoice[]          @relation("InvoiceCreator")
-  generatedInvoices  GeneratedInvoice[] @relation("GeneratedInvoiceCreator")
-  auditLogs          AuditLog[]
+  contracts         Contract[]         @relation("ContractIssuer")
+  organizers        Organizer[]        @relation("OrganizerIssuer")
+  events            Event[]            @relation("EventIssuer")
+  invoices          Invoice[]          @relation("InvoiceCreator")
+  generatedInvoices GeneratedInvoice[] @relation("GeneratedInvoiceCreator")
+  auditLogs         AuditLog[]
 }
 
 // Editable venue/vendor subcategories, managed from the Admin page.
@@ -62,7 +61,10 @@ model Contract {
   contractPeriod      Int? // months
   contractRenewal     DateTime?
   commissionPct       Float     @default(0) // percentage, e.g. 15 = 15%
-  downPayment         String?
+  downPaymentPct      Float     @default(0) // percentage, used for payment split
+  crNumber            String? // CR / Freelance number
+  vatNumber           String? // VAT number
+  iban                String? // bank info (IBAN)
   note                String?
 
   issuerId  String
@@ -71,7 +73,7 @@ model Contract {
   updatedAt DateTime @updatedAt
 
   subcategory       Category?          @relation(fields: [subcategoryId], references: [id])
-  eventsAsProvider  Event[]            @relation("EventProvider")
+  eventLinks        EventPartner[]
   invoices          Invoice[]          @relation("InvoiceProvider")
   invoiceSuppliers  InvoiceSupplier[]
   generatedInvoices GeneratedInvoice[] @relation("GeneratedInvoiceProvider")
@@ -81,12 +83,12 @@ model Contract {
 }
 
 model Organizer {
-  id                 String   @id @default(cuid())
-  name               String
-  communicationChannel String? // REFERRAL | LINKEDIN | MARKETING_LEAD | VISIT | NETWORK | PLATFORM | EMAILS | INSTAGRAM | WEBSEARCH | LUSHA | OTHER_EVENTS
-  communicationInfo  String?
-  date               DateTime @default(now())
-  note               String?
+  id                   String   @id @default(cuid())
+  name                 String
+  communicationChannel String?
+  communicationInfo    String?
+  date                 DateTime @default(now())
+  note                 String?
 
   issuerId  String
   issuer    User     @relation("OrganizerIssuer", fields: [issuerId], references: [id])
@@ -109,9 +111,6 @@ model Event {
   status            String    @default("NEW") // NEW | PENDING | SIGNED | REJECTED
   city              String?
   eventDate         DateTime?
-  serviceProviderId String?
-  externalPartner   String?
-  partnerBankInfo   String?
   note              String?
 
   issuerId  String
@@ -119,10 +118,10 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organizer       Organizer          @relation(fields: [organizerId], references: [id])
-  serviceProvider Contract?          @relation("EventProvider", fields: [serviceProviderId], references: [id])
-  servicesNeeded  EventService[]
-  invoices        Invoice[]
+  organizer         Organizer          @relation(fields: [organizerId], references: [id])
+  servicesNeeded    EventService[]
+  partners          EventPartner[]
+  invoices          Invoice[]
   generatedInvoices GeneratedInvoice[]
 
   @@index([eventName])
@@ -139,14 +138,22 @@ model EventService {
   @@unique([eventId, categoryId])
 }
 
+// Many-to-many: an event can have several service-provider partners.
+model EventPartner {
+  id        String   @id @default(cuid())
+  eventId   String
+  partnerId String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  partner   Contract @relation(fields: [partnerId], references: [id])
+
+  @@unique([eventId, partnerId])
+}
+
 // Service-provider invoice (tracking record) with supplier line items.
 model Invoice {
   id                String   @id @default(cuid())
   serviceProviderId String
   eventId           String
-  attachmentName    String?
-  attachmentType    String?
-  attachmentData    Bytes? // stored in DB so it works on any host (no disk needed)
   note              String?
 
   createdById String
@@ -160,17 +167,25 @@ model Invoice {
 }
 
 model InvoiceSupplier {
-  id            String  @id @default(cuid())
-  invoiceId     String
-  supplierId    String
-  commissionPct Float   @default(0) // snapshot from partner at time of entry
-  downPayment   String?
-  actualCost    Float   @default(0)
-  offerCost     Float   @default(0)
-  netRevenue    Float   @default(0) // computed: offer - actual + actual*commission%
-  partnerBankInfo String?
-  firstPaymentStatus  String @default("PENDING") // PENDING | PAID | REJECTED
-  secondPaymentStatus String @default("NA") // PENDING | PAID | REJECTED | NA
+  id                  String  @id @default(cuid())
+  invoiceId           String
+  supplierId          String
+  commissionPct       Float   @default(0) // snapshot from partner
+  downPaymentPct      Float   @default(0) // snapshot from partner
+  actualCost          Float   @default(0)
+  offerCost           Float   @default(0)
+  netRevenue          Float   @default(0) // offer - actual + actual*commission%
+  attndCommission     Float   @default(0) // actual * commission%
+  vat                 Float   @default(0) // commission * 0.15
+  invoicedAmount      Float   @default(0) // actual - commission - vat
+  firstPaymentAmount  Float   @default(0) // invoiced * downPayment%
+  secondPaymentAmount Float   @default(0) // invoiced * (100% - downPayment%)
+  partnerBankInfo     String? // snapshot of partner IBAN
+  firstPaymentStatus  String  @default("PENDING") // PENDING | PAID | REJECTED
+  secondPaymentStatus String  @default("NA") // PENDING | PAID | REJECTED | NA
+  attachmentName      String?
+  attachmentType      String?
+  attachmentData      Bytes? // supplier invoice file, stored in DB
 
   invoice  Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   supplier Contract @relation(fields: [supplierId], references: [id])
@@ -178,16 +193,16 @@ model InvoiceSupplier {
 
 // Generated invoice = the downloadable PDF letter to a partner.
 model GeneratedInvoice {
-  id                String   @id @default(cuid())
-  number            Int      @unique // sequential, assigned in app code at creation
+  id                String    @id @default(cuid())
+  number            Int       @unique // sequential, assigned in app code
   serviceProviderId String
   eventId           String
   eventDate         DateTime?
-  actualCost        Float    @default(0)
-  attndCommission   Float    @default(0) // actualCost * commission%
-  vat               Float    @default(0) // attndCommission * 0.15
-  invoicedAmount    Float    @default(0) // actualCost - attndCommission - vat
-  printedAt         DateTime @default(now())
+  actualCost        Float     @default(0)
+  attndCommission   Float     @default(0)
+  vat               Float     @default(0)
+  invoicedAmount    Float     @default(0)
+  printedAt         DateTime  @default(now())
 
   createdById String
   createdBy   User     @relation("GeneratedInvoiceCreator", fields: [createdById], references: [id])
@@ -199,15 +214,15 @@ model GeneratedInvoice {
 
 // Edit-tracking: who changed what, when. One row per create/update/delete.
 model AuditLog {
-  id         String   @id @default(cuid())
-  entityType String // Contract | Organizer | Event | Invoice | GeneratedInvoice | User | Category
-  entityId   String
-  entityLabel String? // human-friendly label (e.g. partner/event name) for display
-  action     String // CREATE | UPDATE | DELETE
-  changes    String? // JSON: { field: { old, new } }
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id])
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  entityLabel String?
+  action      String // CREATE | UPDATE | DELETE
+  changes     String? // JSON
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
 
   @@index([entityType, entityId])
   @@index([createdAt])
