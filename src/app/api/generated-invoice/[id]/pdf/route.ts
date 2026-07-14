@@ -45,7 +45,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
     // ---- Header: white letterhead with the real Attnd logo ----
     drawLogo(page, 40, height - 34, 34);
-    drawRight("INVOICE", width - 40, height - 60, 24, bold, primary);
+    drawRight("REQUEST FOR INVOICE", width - 40, height - 58, 17, bold, primary);
     draw(brand.tagline, width - 40 - font.widthOfTextAtSize(brand.tagline, 8), height - 74, 8, font, muted);
     page.drawRectangle({ x: 40, y: height - 84, width: width - 80, height: 2, color: accent });
 
@@ -100,7 +100,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     return new NextResponse(Buffer.from(bytes), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="Attnd-Invoice-INV-${gi.number}.pdf"`,
+        "Content-Disposition": `inline; filename="Attnd-Request-for-Invoice-INV-${gi.number}.pdf"`,
       },
     });
   } catch (err) {

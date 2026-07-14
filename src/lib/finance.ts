@@ -16,8 +16,10 @@ export function vatOn(commission: number): number {
   return round2(commission * brand.vatRate);
 }
 
-export function invoicedAmount(actualCost: number, commission: number, vat: number): number {
-  return round2(actualCost - commission - vat);
+// Invoiced amount = actual cost − Attnd commission. (VAT is shown separately
+// but is NOT deducted from the invoiced amount.)
+export function invoicedAmount(actualCost: number, commission: number, _vat?: number): number {
+  return round2(actualCost - commission);
 }
 
 /** Per-supplier invoiced amount on a service-provider invoice. */

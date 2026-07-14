@@ -51,7 +51,7 @@ export default async function EventDetailPage({ params }: { params: { id: string
               <StatusBadge value={event.status} label={EVENT_STATUS_LABELS[event.status]} />
               <Link href={`/finance/generate?event=${event.id}`}>
                 <Button variant="outline" size="sm">
-                  <Receipt className="h-3.5 w-3.5" /> Generate invoice
+                  <Receipt className="h-3.5 w-3.5" /> Generate request for invoice
                 </Button>
               </Link>
               {user.role === "ADMIN" && (

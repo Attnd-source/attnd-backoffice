@@ -13,8 +13,8 @@ export const DATASETS = [
   { key: "contracts", label: "Contracts" },
   { key: "organizers", label: "Organizers" },
   { key: "events", label: "Events" },
-  { key: "invoices", label: "Requests for invoice" },
-  { key: "generated", label: "Generated invoices" },
+  { key: "invoices", label: "Service-provider invoices" },
+  { key: "generated", label: "Generated requests for invoice" },
 ] as const;
 
 export type DatasetKey = (typeof DATASETS)[number]["key"];
@@ -123,7 +123,7 @@ export async function buildReport(
       });
       const filtered = rows.filter((i) => withinRange(i.createdAt, from, to));
       return {
-        title: "Requests for invoice",
+        title: "Service-provider invoices",
         columns: ["Service provider", "Event", "Suppliers", "Total net revenue", "Created by", "Created"],
         rows: filtered.map((i) => [
           i.serviceProvider.partnerName,
@@ -146,7 +146,7 @@ export async function buildReport(
       });
       const filtered = rows.filter((g) => withinRange(g.createdAt, from, to));
       return {
-        title: "Generated invoices",
+        title: "Generated requests for invoice",
         columns: ["Invoice #", "Service provider", "Event", "Event date", "Actual cost", "Attnd commission", "VAT", "Invoiced amount", "Created by", "Created"],
         rows: filtered.map((g) => [
           `INV-${g.number}`,

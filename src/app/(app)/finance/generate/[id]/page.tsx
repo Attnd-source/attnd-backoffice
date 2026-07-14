@@ -29,7 +29,7 @@ export default async function GeneratedInvoiceDetail({ params }: { params: { id:
   return (
     <div className="max-w-3xl">
       <PageHeader
-        title={`Invoice INV-${gi.number}`}
+        title={`Request for invoice INV-${gi.number}`}
         subtitle={`${gi.serviceProvider.partnerName} · created by ${gi.createdBy.name}`}
         breadcrumb={[{ label: "Finance", href: "/finance" }, { label: `INV-${gi.number}` }]}
         action={
@@ -39,13 +39,13 @@ export default async function GeneratedInvoiceDetail({ params }: { params: { id:
                 <Download className="h-4 w-4" /> Download PDF
               </Button>
             </a>
-            {user.role === "ADMIN" && <DeleteButton action={deleteGeneratedInvoice} id={gi.id} label="invoice" />}
+            {user.role === "ADMIN" && <DeleteButton action={deleteGeneratedInvoice} id={gi.id} label="request for invoice" />}
           </div>
         }
       />
       <Card>
         <CardHeader>
-          <CardTitle>Invoice summary</CardTitle>
+          <CardTitle>Request for invoice — summary</CardTitle>
         </CardHeader>
         <CardBody className="grid gap-4 sm:grid-cols-2">
           <ReadField label="Service provider">{gi.serviceProvider.partnerName}</ReadField>

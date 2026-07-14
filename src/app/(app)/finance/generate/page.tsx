@@ -18,9 +18,9 @@ export default async function GenerateInvoicePage({
   return (
     <div className="max-w-3xl">
       <PageHeader
-        title="Generate invoice"
-        subtitle="Produce a partner invoice letter (PDF) with Attnd commission, VAT, and the invoiced amount."
-        breadcrumb={[{ label: "Finance", href: "/finance" }, { label: "Generate invoice" }]}
+        title="Generate request for invoice"
+        subtitle="Produce a partner request-for-invoice letter (PDF) with Attnd commission, VAT, and the invoiced amount."
+        breadcrumb={[{ label: "Finance", href: "/finance" }, { label: "Generate request for invoice" }]}
       />
       <Card>
         <CardBody>

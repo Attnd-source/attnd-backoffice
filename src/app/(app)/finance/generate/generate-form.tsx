@@ -98,7 +98,7 @@ export function GenerateForm({
       <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-4 sm:grid-cols-3">
         <Calc label="Attnd commission" hint="actual × commission%" value={money(commission)} />
         <Calc label={`VAT (${brand.vatRate * 100}%)`} hint="commission × 0.15" value={money(vat)} />
-        <Calc label="Invoiced amount" hint="actual − commission − VAT" value={money(invoiced)} highlight />
+        <Calc label="Invoiced amount" hint="actual − commission" value={money(invoiced)} highlight />
       </div>
 
       {state?.error && (
