@@ -4,7 +4,7 @@ import { verifyToken, SESSION_COOKIE } from "@/lib/jwt";
 
 // Protect all app routes; allow login + static assets + the file API (which
 // does its own auth check).
-const PUBLIC = ["/login"];
+const PUBLIC = ["/login", "/api/_diag"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
