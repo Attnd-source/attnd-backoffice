@@ -25,6 +25,8 @@ services:
         generateValue: true # Render creates a strong random session secret
       - key: NODE_VERSION
         value: "20.18.0"
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=2048"
       - key: ADMIN_EMAIL
         sync: false # you set this in the dashboard (your admin login email)
       - key: ADMIN_PASSWORD

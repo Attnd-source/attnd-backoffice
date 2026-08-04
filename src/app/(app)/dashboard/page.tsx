@@ -10,8 +10,10 @@ import {
   EVENT_STATUS_LABELS,
   CONTRACT_STATUSES,
   EVENT_STATUSES,
+  CRM_STAGE1,
+  CRM_STAGE_LABELS,
 } from "@/lib/constants";
-import { FileText, Users2, CalendarDays, Receipt, ArrowRight } from "lucide-react";
+import { FileText, Users2, CalendarDays, Receipt, Contact2, TrendingUp, ArrowRight } from "lucide-react";
 import { StatusBar, StatusPie, Legend } from "./charts";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +40,7 @@ export default async function DashboardPage() {
     events,
     generated,
     recent,
+    customers,
   ] = await Promise.all([
     prisma.contract.count(),
     prisma.organizer.count(),
@@ -51,7 +54,24 @@ export default async function DashboardPage() {
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
+    prisma.customer.findMany({
+      select: { stage1: true, stage2: true, stage3: true, stage4: true, stage5: true, createdAt: true },
+    }),
   ]);
+
+  // ---- CRM pipeline metrics ----
+  const nowTs = Date.now();
+  const weekAgo = new Date(nowTs - 7 * 86400000);
+  const twoWeeksAgo = new Date(nowTs - 14 * 86400000);
+  const pipelineSize = customers.length;
+  const thisWeek = customers.filter((c) => c.createdAt >= weekAgo).length;
+  const lastWeek = customers.filter((c) => c.createdAt >= twoWeeksAgo && c.createdAt < weekAgo).length;
+  const growthPct = lastWeek > 0 ? Math.round(((thisWeek - lastWeek) / lastWeek) * 100) : thisWeek > 0 ? 100 : 0;
+  const currentStage = (c: any) => c.stage5 || c.stage4 || c.stage3 || c.stage2 || c.stage1;
+  const stageData = CRM_STAGE1.map((s) => ({
+    name: CRM_STAGE_LABELS[s],
+    value: customers.filter((c) => currentStage(c) === s).length,
+  }));
 
   const contractData = CONTRACT_STATUSES.map((s) => ({
     name: CONTRACT_STATUS_LABELS[s],
@@ -98,6 +118,47 @@ export default async function DashboardPage() {
         <CardBody className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm text-muted-foreground">Total invoiced (generated invoices)</span>
           <span className="text-2xl font-semibold text-brand">{money(generated._sum.invoicedAmount ?? 0)}</span>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>CRM pipeline</CardTitle>
+        </CardHeader>
+        <CardBody className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="flex items-center gap-3 rounded-lg border border-border p-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-muted text-brand">
+                <Contact2 className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Pipeline size</p>
+                <p className="text-2xl font-semibold">{pipelineSize}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border border-border p-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-muted text-brand">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Weekly growth</p>
+                <p className={`text-2xl font-semibold ${growthPct >= 0 ? "text-success" : "text-danger"}`}>
+                  {growthPct >= 0 ? "+" : ""}
+                  {growthPct}%
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border border-border p-4">
+              <div>
+                <p className="text-sm text-muted-foreground">New this week</p>
+                <p className="text-2xl font-semibold">{thisWeek}</p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-medium text-muted-foreground">Customers by stage</p>
+            <StatusBar data={stageData} />
+          </div>
         </CardBody>
       </Card>
 

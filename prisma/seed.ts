@@ -58,6 +58,22 @@ async function main() {
     console.log("Admin already exists — skipping admin seed.");
   }
 
+  // Seed admin-editable CRM lists once (deploy-safe).
+  const listCount = await prisma.listOption.count();
+  if (listCount === 0) {
+    const sources = ["Referral", "Website", "Exhibition", "Network", "Email", "LinkedIn", "Google", "Instagram", "TikTok"];
+    const priorities = ["Warm", "Medium", "Cold"];
+    const cities = ["Riyadh", "Jeddah", "Mecca", "Medina", "Dammam", "Khobar", "Dhahran", "Taif", "Tabuk", "Buraidah", "Khamis Mushait", "Abha", "Hail", "Najran", "Jubail", "Yanbu", "Al Ahsa", "Jazan", "Qatif", "NEOM"];
+    const rows: { listKey: string; value: string; sortOrder: number }[] = [];
+    sources.forEach((v, i) => rows.push({ listKey: "SOURCE", value: v, sortOrder: i }));
+    priorities.forEach((v, i) => rows.push({ listKey: "PRIORITY", value: v, sortOrder: i }));
+    cities.forEach((v, i) => rows.push({ listKey: "CITY", value: v, sortOrder: i }));
+    await prisma.listOption.createMany({ data: rows });
+    console.log(`Seeded ${rows.length} CRM list options.`);
+  } else {
+    console.log("CRM lists already exist — skipping.");
+  }
+
   // Only seed categories if none exist (deploy-safe: won't resurrect deletions).
   const categoryCount = await prisma.category.count();
   if (categoryCount === 0) {

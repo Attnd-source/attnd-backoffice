@@ -13,6 +13,9 @@ import {
   Shield,
   Tags,
   UserCog,
+  Contact2,
+  CheckSquare,
+  ListChecks,
   LogOut,
   Menu,
   X,
@@ -22,17 +25,20 @@ import { brand } from "@/lib/brand";
 import { logoutAction } from "@/app/actions/auth";
 import type { SessionUser } from "@/lib/session";
 
-type NavItem = { href: string; label: string; icon: React.ElementType; adminOnly?: boolean };
+type NavItem = { href: string; label: string; icon: React.ElementType; adminOnly?: boolean; badge?: boolean };
 
 const nav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/crm", label: "CRM", icon: Contact2 },
   { href: "/contracts", label: "Contracts", icon: FileText },
   { href: "/organizers", label: "Organizers", icon: Users2 },
   { href: "/events", label: "Events", icon: CalendarDays },
   { href: "/finance", label: "Finance", icon: Receipt },
   { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/my-tasks", label: "My tasks", icon: CheckSquare, badge: true },
   { href: "/admin/users", label: "Users", icon: UserCog, adminOnly: true },
   { href: "/admin/categories", label: "Categories", icon: Tags, adminOnly: true },
+  { href: "/admin/lists", label: "Lists", icon: ListChecks, adminOnly: true },
 ];
 
 function initials(name: string) {
@@ -44,7 +50,15 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-export function AppShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
+export function AppShell({
+  user,
+  taskCount = 0,
+  children,
+}: {
+  user: SessionUser;
+  taskCount?: number;
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const isAdmin = user.role === "ADMIN";
@@ -79,7 +93,17 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
                 )}
               >
                 <Icon className="h-4 w-4" />
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {item.badge && taskCount > 0 && (
+                  <span
+                    className={cn(
+                      "inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-xs font-semibold",
+                      active ? "bg-brand-fg text-brand" : "bg-brand-accent text-white"
+                    )}
+                  >
+                    {taskCount}
+                  </span>
+                )}
               </Link>
             </div>
           );

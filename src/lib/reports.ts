@@ -7,6 +7,7 @@ import {
   CONTRACT_STATUS_LABELS,
   ORGANIZER_CHANNEL_LABELS,
   EVENT_STATUS_LABELS,
+  CRM_STAGE_LABELS,
 } from "./constants";
 
 export const DATASETS = [
@@ -15,6 +16,7 @@ export const DATASETS = [
   { key: "events", label: "Events" },
   { key: "invoices", label: "Service-provider invoices" },
   { key: "generated", label: "Generated requests for invoice" },
+  { key: "crm", label: "CRM customers" },
 ] as const;
 
 export type DatasetKey = (typeof DATASETS)[number]["key"];
@@ -159,6 +161,31 @@ export async function buildReport(
           g.invoicedAmount,
           g.createdBy.name,
           dateTime(g.createdAt),
+        ]),
+      };
+    }
+    case "crm": {
+      const [rows, users] = await Promise.all([
+        prisma.customer.findMany({ orderBy: { createdAt: "desc" } }),
+        prisma.user.findMany({ select: { id: true, name: true } }),
+      ]);
+      const nm: Record<string, string> = Object.fromEntries(users.map((u) => [u.id, u.name]));
+      const filtered = rows.filter((c) => withinRange(c.date ?? c.createdAt, from, to));
+      const cur = (c: any) => c.stage5 || c.stage4 || c.stage3 || c.stage2 || c.stage1;
+      return {
+        title: "CRM customers",
+        columns: ["Customer", "Company", "City", "Source", "Priority", "Current stage", "Assigned to", "Agent", "Event value", "Date"],
+        rows: filtered.map((c) => [
+          c.customerName,
+          c.companyName ?? "—",
+          c.city ?? "—",
+          c.source ?? "—",
+          c.priority ?? "—",
+          label(CRM_STAGE_LABELS, cur(c)),
+          c.assignedToId ? nm[c.assignedToId] ?? "—" : "—",
+          nm[c.agentId] ?? "—",
+          c.eventValue ?? 0,
+          fmtDate(c.date),
         ]),
       };
     }

@@ -227,3 +227,59 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
 }
+
+// Admin-editable dropdown lists (CRM source / priority / city).
+model ListOption {
+  id        String   @id @default(cuid())
+  listKey   String // SOURCE | PRIORITY | CITY
+  value     String
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([listKey, value])
+  @@index([listKey])
+}
+
+// CRM customer / sales pipeline record.
+model Customer {
+  id             String    @id @default(cuid())
+  date           DateTime  @default(now()) // date the customer was created
+  agentId        String // creator (user)
+  customerName   String
+  jobDescription String?
+  companyName    String?
+  companyField   String?
+  city           String?
+  contactNumber  String?
+  email          String?
+  source         String?
+  priority       String? // WARM | MEDIUM | COLD
+
+  assignedToId String? // owner 1 / "assign to"
+  stage1       String    @default("NOT_HANDLED") // NOT_HANDLED | CONTACTED | PROPOSED | VISIT | SIGNED | REJECTED
+  dateStage1   DateTime?
+  owner2Id     String?
+  stage2       String?
+  dateStage2   DateTime?
+  owner3Id     String?
+  stage3       String?
+  dateStage3   DateTime?
+  owner4Id     String?
+  stage4       String?
+  dateStage4   DateTime?
+  owner5Id     String?
+  stage5       String?
+  dateStage5   DateTime?
+
+  rejectionReason String? // shown when any stage is REJECTED
+  eventValue      Float? // shown when any stage is SIGNED
+
+  organizerId String? // set when a stage becomes SIGNED and an organizer is created
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerName])
+  @@index([assignedToId])
+}

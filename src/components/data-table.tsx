@@ -12,6 +12,7 @@ import {
   ORGANIZER_CHANNEL_LABELS,
   EVENT_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
+  CRM_STAGE_LABELS,
 } from "@/lib/constants";
 
 const MAPS: Record<string, Record<string, string>> = {
@@ -21,6 +22,7 @@ const MAPS: Record<string, Record<string, string>> = {
   ORGANIZER_CHANNEL: ORGANIZER_CHANNEL_LABELS,
   EVENT_STATUS: EVENT_STATUS_LABELS,
   PAYMENT_STATUS: PAYMENT_STATUS_LABELS,
+  CRM_STAGE: CRM_STAGE_LABELS,
 };
 
 export type ColumnType =
