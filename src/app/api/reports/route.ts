@@ -19,7 +19,24 @@ export async function GET(req: NextRequest) {
   if (!DATASETS.some((d) => d.key === dataset)) {
     return NextResponse.json({ error: "Unknown dataset" }, { status: 400 });
   }
-  const report = await buildReport(dataset, from, to);
+  const full = await buildReport(dataset, from, to);
+
+  // Optional column selection: ?cols=0,2,3 (indices, in order). Default = all.
+  const colsParam = sp.get("cols");
+  let report = full;
+  if (colsParam) {
+    const idx = colsParam
+      .split(",")
+      .map((n) => parseInt(n, 10))
+      .filter((n) => Number.isInteger(n) && n >= 0 && n < full.columns.length);
+    if (idx.length > 0) {
+      report = {
+        title: full.title,
+        columns: idx.map((i) => full.columns[i]),
+        rows: full.rows.map((r) => idx.map((i) => r[i])),
+      };
+    }
+  }
 
   if (format === "json") {
     return NextResponse.json(report);

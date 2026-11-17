@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "./prisma";
 import { date as fmtDate, dateTime } from "./format";
+import { DATASET_COLUMNS } from "./report-columns";
 import {
   label,
   PARTNER_TYPE_LABELS,
@@ -50,7 +51,7 @@ export async function buildReport(
       const filtered = rows.filter((c) => withinRange(c.contractIssuingDate ?? c.createdAt, from, to));
       return {
         title: "Contracts",
-        columns: ["Partner", "Type", "Subcategory", "Status", "Issuer", "Date of issue", "Issuing date", "Renewal", "Commission %", "Down payment %", "CR/Freelance", "VAT no.", "IBAN"],
+        columns: DATASET_COLUMNS.contracts,
         rows: filtered.map((c) => [
           c.partnerName,
           label(PARTNER_TYPE_LABELS, c.type),
@@ -76,7 +77,7 @@ export async function buildReport(
       const filtered = rows.filter((o) => withinRange(o.date, from, to));
       return {
         title: "Organizers",
-        columns: ["Name", "Channel", "Contact info", "Lead issuer", "Date"],
+        columns: DATASET_COLUMNS.organizers,
         rows: filtered.map((o) => [
           o.name,
           label(ORGANIZER_CHANNEL_LABELS, o.communicationChannel),
@@ -98,7 +99,7 @@ export async function buildReport(
       const filtered = rows.filter((e) => withinRange(e.eventDate ?? e.createdAt, from, to));
       return {
         title: "Events",
-        columns: ["Event", "Organizer", "Type", "Status", "City", "Attendees", "Expected budget", "Event date", "Service providers", "Issuer"],
+        columns: DATASET_COLUMNS.events,
         rows: filtered.map((e) => [
           e.eventName,
           e.organizer.name,
@@ -126,7 +127,7 @@ export async function buildReport(
       const filtered = rows.filter((i) => withinRange(i.createdAt, from, to));
       return {
         title: "Service-provider invoices",
-        columns: ["Service provider", "Event", "Suppliers", "Total net revenue", "Created by", "Created"],
+        columns: DATASET_COLUMNS.invoices,
         rows: filtered.map((i) => [
           i.serviceProvider.partnerName,
           i.event.eventName,
@@ -149,7 +150,7 @@ export async function buildReport(
       const filtered = rows.filter((g) => withinRange(g.createdAt, from, to));
       return {
         title: "Generated requests for invoice",
-        columns: ["Invoice #", "Service provider", "Event", "Event date", "Actual cost", "Attnd commission", "VAT", "Invoiced amount", "Created by", "Created"],
+        columns: DATASET_COLUMNS.generated,
         rows: filtered.map((g) => [
           `INV-${g.number}`,
           g.serviceProvider.partnerName,
@@ -174,7 +175,7 @@ export async function buildReport(
       const cur = (c: any) => c.stage5 || c.stage4 || c.stage3 || c.stage2 || c.stage1;
       return {
         title: "CRM customers",
-        columns: ["Customer", "Company", "City", "Source", "Priority", "Current stage", "Assigned to", "Agent", "Event value", "Date"],
+        columns: DATASET_COLUMNS.crm,
         rows: filtered.map((c) => [
           c.customerName,
           c.companyName ?? "—",
