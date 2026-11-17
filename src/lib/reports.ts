@@ -179,6 +179,7 @@ export async function buildReport(
         rows: filtered.map((c) => [
           c.customerName,
           c.companyName ?? "—",
+          c.email ?? "—",
           c.city ?? "—",
           c.source ?? "—",
           c.priority ?? "—",

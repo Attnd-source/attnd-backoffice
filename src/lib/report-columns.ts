@@ -16,7 +16,7 @@ export const DATASET_COLUMNS: Record<string, string[]> = {
     "VAT", "Invoiced amount", "Created by", "Created",
   ],
   crm: [
-    "Customer", "Company", "City", "Source", "Priority", "Current stage", "Assigned to",
+    "Customer", "Company", "Email", "City", "Source", "Priority", "Current stage", "Assigned to",
     "Agent", "Event value", "Date",
   ],
 };
